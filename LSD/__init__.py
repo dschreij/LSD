@@ -40,7 +40,7 @@ class SDL2Environment(object):
 
 		
 		
-	def __str__(self):
+	def info(self):
 		infostring = """
 SDL2 environment information		
 		
@@ -67,6 +67,9 @@ Displays:
 		Refresh rate: {} fps
 			""".format(dispnum, display.w, display.h, display.refresh_rate)
 		return infostring
+		
+	def __str__(self):
+		return self.info()
 		
 	def get_available_display_drivers(self):
 		drivers = []

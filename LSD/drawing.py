@@ -59,32 +59,31 @@ class FrameBuffer(object):
 	def draw_circle(self, x, y, r, color, fill=True, aa=False):
 		color = sdl2.ext.convert_to_color(color)
 		if fill:		
-			sdlgfx.filledCircleColor(self.sdl_renderer, x, y, r, color)
+			return sdlgfx.filledCircleColor(self.sdl_renderer, x, y, r, color)
 		elif aa:
-			sdlgfx.aacircleColor(self.sdl_renderer, x, y, r, color)
+			return sdlgfx.aacircleColor(self.sdl_renderer, x, y, r, color)
 		else:
-			sdlgfx.circleColor(self.sdl_renderer, x, y, r, color)
+			return sdlgfx.circleColor(self.sdl_renderer, x, y, r, color)
 	
 	@to_texture	
 	def draw_rect(self, x, y, w, h, color, border_radius=0, fill=True):
 		color = sdl2.ext.convert_to_color(color)
 		
 		if fill:						
-			if border_radius:
-				sdl2.sdlgfx.roundedBoxColor(self.sdl_renderer, x, y, x+w, y+h, border_radius, color)
+			if border_radius > 0:
+				return sdl2.sdlgfx.roundedBoxColor(self.sdl_renderer, x, y, x+w, y+h, border_radius, color)
 			else:
-				sdl2.sdlgfx.boxColor(self.sdl_renderer, x, y, x+w, y+h, color)
+				return sdl2.sdlgfx.boxColor(self.sdl_renderer, x, y, x+w, y+h, color)
 		else:
-			if border_radius:
-				sdl2.sdlgfx.roundedRectangleColor(self.sdl_renderer, x, y, x+w, y+h, border_radius, color)
+			if border_radius > 0:
+				return sdl2.sdlgfx.roundedRectangleColor(self.sdl_renderer, x, y, x+w, y+h, border_radius, color)
 			else:
-				sdl2.sdlgfx.rectangleColor(self.sdl_renderer, x, y, x+w, y+h, color)
+				return sdl2.sdlgfx.rectangleColor(self.sdl_renderer, x, y, x+w, y+h, color)
 
 				
 	def show(self):
 		self.renderer.copy(self.surface)
 		self.renderer.present()
-		self.environment.window.refresh()
 		
 	def __del__(self):
 		del([self.renderer, self.surface, self.sdl_renderer])

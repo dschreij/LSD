@@ -23,22 +23,22 @@ import LSD
 from functools import wraps
 
 class FrameBuffer(object):
-	
-	def __init__(self, environment):
+
+	def __init__(self, environment, background_color=0):
 		if type(environment) != LSD.SDL2Environment:
 			raise TypeError("ERROR: context argument should be of type LSD.SDL2Environment")
-		self.environment = environment	
+		self.environment = environment
 		self.surface = environment.factory.create_sprite(size=environment.resolution, access=sdl2.SDL_TEXTUREACCESS_TARGET)
 		self.renderer = environment.renderer
 		self.sdl_renderer = self.renderer.renderer
-		
-		self.clear()		
-	
+		self.background_color = background_color
+
+		self.clear()
+
 	# Decorator
 	def to_texture(drawing_function):
-		
 		@wraps(drawing_function)
-		def wrapped(inst, *args, **kwargs):	
+		def wrapped(inst, *args, **kwargs):
 			tex_set = sdl2.SDL_SetRenderTarget(inst.sdl_renderer, inst.surface.texture)
 			if tex_set != 0:
 				raise Exception("Could not set FrameBuffers texture as rendering target")
@@ -50,42 +50,93 @@ class FrameBuffer(object):
 		return wrapped
 
 
-	@to_texture	
-	def clear(self, color=0):
-		color = sdl2.ext.convert_to_color(color)
-		self.renderer.clear(color)	
-	
 	@to_texture
-	def draw_circle(self, x, y, r, color, fill=True, aa=False):
+	def clear(self, color=None):
+		if color is None:
+			color = self.background_color
 		color = sdl2.ext.convert_to_color(color)
-		if fill:		
-			return sdlgfx.filledCircleColor(self.sdl_renderer, x, y, r, color)
-		elif aa:
-			return sdlgfx.aacircleColor(self.sdl_renderer, x, y, r, color)
-		else:
-			return sdlgfx.circleColor(self.sdl_renderer, x, y, r, color)
-	
-	@to_texture	
-	def draw_rect(self, x, y, w, h, color, border_radius=0, fill=True):
-		color = sdl2.ext.convert_to_color(color)
-		
-		if fill:						
-			if border_radius > 0:
-				return sdl2.sdlgfx.roundedBoxColor(self.sdl_renderer, x, y, x+w, y+h, border_radius, color)
-			else:
-				return sdl2.sdlgfx.boxColor(self.sdl_renderer, x, y, x+w, y+h, color)
-		else:
-			if border_radius > 0:
-				return sdl2.sdlgfx.roundedRectangleColor(self.sdl_renderer, x, y, x+w, y+h, border_radius, color)
-			else:
-				return sdl2.sdlgfx.rectangleColor(self.sdl_renderer, x, y, x+w, y+h, color)
+		self.renderer.clear(color)
 
-				
+	@to_texture
+	def draw_circle(self, x, y, r, color, opacity=1.0, fill=True, aa=False):
+		color = sdl2.ext.convert_to_color(color)
+		if fill:
+			return sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+		elif aa:
+			return sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+		else:
+			return sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+
+	@to_texture
+	def draw_ellipse(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False):
+		color = sdl2.ext.convert_to_color(color)
+
+		if fill:
+			return sdl2.sdlgfx.filledEllipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+		elif aa:
+			return sdl2.sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+		else:
+			return sdl2.sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+
+	@to_texture
+	def draw_rect(self, x, y, w, h, color, opacity=1.0, fill=True, border_radius=0):
+		color = sdl2.ext.convert_to_color(color)
+		if fill:
+			if border_radius > 0:
+				return sdl2.sdlgfx.roundedBoxRGBA(self.sdl_renderer, x, y, x+w, y+h, border_radius, color.r, color.g, color.b, int(opacity*255))
+			else:
+				return sdl2.sdlgfx.boxRGBA(self.sdl_renderer, x, y, x+w, y+h, color.r, color.g, color.b, int(opacity*255))
+		else:
+			if border_radius > 0:
+				return sdl2.sdlgfx.roundedRectangleRGBA(self.sdl_renderer, x, y, x+w, y+h, border_radius, color.r, color.g, color.b, int(opacity*255))
+			else:
+				return sdl2.sdlgfx.rectangleRGBA(self.sdl_renderer, x, y, x+w, y+h, color.r, color.g, color.b, int(opacity*255))
+
+	@to_texture
+	def draw_line(self, x1, y1, x2, y2, color, opacity=1.0, aa=False, width=1):
+		color = sdl2.ext.convert_to_color(color)
+		if width < 1:
+			raise ValueError("Line width cannot be smaller than 1px")
+		if width > 1:
+			return sdl2.sdlgfx.thickLineRGBA(self.sdl_renderer, x1, y1, x2, y2, width, color.r, color.g, color.b, int(opacity*255))
+		if not aa:
+			return sdl2.sdlgfx.lineRGBA(self.sdl_renderer, x1, y1, x2, y2, color.r, color.g, color.b, int(opacity*255))
+		else:
+			return sdl2.sdlgfx.aalineRGBA(self.sdl_renderer, x1, y1, x2, y2, color.r, color.g, color.b, int(opacity*255))
+
+	@to_texture
+	def draw_text(self, x, y, text, color, opacity=1.0):
+		color = sdl2.ext.convert_to_color(color)
+		return sdl2.sdlgfx.stringRGBA(self.sdl_renderer, x, y, text, color.r, color.g, color.b, int(opacity*255))
+
+	@to_texture
+	def draw_arc(self, x, y, r, start, end, color, opacity=1.0):
+		color = sdl2.ext.convert_to_color(color)
+
+	@to_texture
+	def draw_pie(self, x, y, r, start, end, color, opacity=1.0, fill=True):
+		color = sdl2.ext.convert_to_color(color)
+
+	@to_texture
+	def draw_trigon(self, x1, y1, x2, y2, x3, y3, color, opacity=1.0, fill=True, aa=False):
+		color = sdl2.ext.convert_to_color(color)
+
+	@to_texture
+	def draw_polygon(self, vx, vy, color, opacity=1.0, fill=True, aa=False, image=None):
+		color = sdl2.ext.convert_to_color(color)
+
+	@to_texture
+	def draw_bezier_curve(self, vx, vy, s, color):
+		color = sdl2.ext.convert_to_color(color)
+
+	@to_texture
+	def draw_image(self, x, y, image_path, opacity=1.0):
+		pass
+
 	def show(self):
 		self.renderer.copy(self.surface)
 		self.renderer.present()
-		
+
 	def __del__(self):
 		del([self.renderer, self.surface, self.sdl_renderer])
 
-		

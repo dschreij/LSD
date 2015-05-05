@@ -21,7 +21,7 @@ resolution = (800,600)
 window = sdl2.ext.Window("test", size=resolution)
 window.show()
 
-# Create a render system that renders to the window surface		
+# Create a render system that renders to the window surface
 renderer = sdl2.ext.Renderer(window)
 # Clear with black color
 renderer.clear(0)
@@ -34,7 +34,8 @@ renderer.clear(0)
 sdl2.sdlgfx.thickLineColor(renderer.renderer, 10, 10, 40, 50, 3, 0xFFFFFFFF)
 color = randint(0, 0xFFFFFFFF)
 sdl2.sdlgfx.aalineColor(renderer.renderer, 100, 50, 400, 80, color)
-sdl2.sdlgfx.lineColor(renderer.renderer, 100, 60, 400, 90, color)
+sdl2.sdlgfx.lineColor(renderer.renderer, 100, 60, 400, 90,  0x0000FFFF)
+sdl2.sdlgfx.filledCircleRGBA(renderer.renderer, 400, 300, 100, 0, 255, 0, 255)
 print sdl2.SDL_SetRenderTarget(renderer.renderer, None)
 
 renderer.copy(surface)

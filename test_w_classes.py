@@ -31,6 +31,7 @@ for i in range(0,150):
 	fb6.draw_circle(randint(0,750), randint(0,550), 40, color=(0,0,255,255), opacity=randint(5,10)/10.0 )
 
 fb.show()
+c.window.refresh()
 sdl2.SDL_Delay(2000)
 events = sdl2.ext.get_events()
 fb2.show()
@@ -46,6 +47,10 @@ fb5.show()
 sdl2.SDL_Delay(2000)
 events = sdl2.ext.get_events()
 fb6.show()
+sdl2.SDL_Delay(2000)
+events = sdl2.ext.get_events()
+fb.show()
+c.window.refresh()
 
 processor = sdl2.ext.TestEventProcessor()
 processor.run(c.window)

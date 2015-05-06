@@ -14,6 +14,9 @@ from __future__ import unicode_literals
 import sdl2.ext
 import LSD.drawing
 
+__version__ = '1.0'
+__author__ = 'Daniel Schreij'
+
 class SDL2Environment(object):
 
 	def __init__(self, window, resolution, renderer, factory):
@@ -29,7 +32,6 @@ class SDL2Environment(object):
 
 		self.cpu_count = sdl2.SDL_GetCPUCount()
 		self.display_count = sdl2.SDL_GetNumVideoDisplays()
-		self.display_driver = sdl2.SDL_GetCurrentVideoDriver()
 
 		self.displays = []
 		for dispnum in range(self.display_count):
@@ -37,23 +39,30 @@ class SDL2Environment(object):
 			res = sdl2.SDL_GetCurrentDisplayMode(dispnum, dispinfo)
 			if res == 0:
 				self.displays.append(dispinfo)
+				
+		self.display_drivers = [sdl2.video.SDL_GetVideoDriver(i) for i in range(sdl2.video.SDL_GetNumVideoDrivers())]
+		self.display_driver = sdl2.SDL_GetCurrentVideoDriver()
 
-	def info(self):
+	def __str__(self):
 		infostring = """
 SDL2 environment information
 
 General:
+	LSD version {}
 	PySDL2 version: {}
 	SDL2 version: {}
 	CPU count: {}
 
 Displays:
-	Display driver: {}
+	Available display drivers: {}
+	Currrent display driver: {}
 	Number of displays detected: {}
 		""".format(
+			__version__,
 			self.pysdl2_version,
 			self.sdl2_version,
 			self.cpu_count,
+			self.display_drivers,
 			self.display_driver,
 			self.display_count
 		)
@@ -66,8 +75,26 @@ Displays:
 			""".format(dispnum, display.w, display.h, display.refresh_rate)
 		return infostring
 
-	def __str__(self):
-		return self.info()
+	def info(self):
+		info = { 
+			"LSD version":__version__,
+			"PySDL2 version":self.pysdl2_version,
+			"SDL2 version":self.sdl2_version,
+			"CPU count":self.cpu_count,
+			"Current display driver":self.display_driver,
+			"Display count":self.display_count,
+			"Window dimensions":self.resolution,
+			"Available display drivers":self.display_drivers,
+		}
+		
+		for dispnum, display in enumerate(self.displays):
+			cur_disp_info = {}			
+			cur_disp_info["Resolution"] = (display.w, display.h)
+			cur_disp_info["Refresh rate"] = display.refresh_rate
+			info["Display {}".format(dispnum)] = cur_disp_info
+			
+		
+		return info
 
 	def get_available_display_drivers(self):
 		drivers = []

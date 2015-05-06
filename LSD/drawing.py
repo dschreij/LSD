@@ -40,6 +40,7 @@ class FrameBuffer(object):
 
 	# Decorator
 	def to_texture(drawing_function):
+		
 		@wraps(drawing_function)
 		def wrapped(inst, *args, **kwargs):
 			tex_set = sdl2.SDL_SetRenderTarget(inst.sdl_renderer, inst.surface.texture)
@@ -163,8 +164,9 @@ class FrameBuffer(object):
 		return self.spriterenderer.render(image)
 
 	def show(self):
+		self.renderer.clear()
 		self.renderer.copy(self.surface)
-		self.renderer.present()
+		return self.renderer.present()
 
 	def __del__(self):
 		del([self.renderer, self.surface, self.sdl_renderer, self.spriterenderer])

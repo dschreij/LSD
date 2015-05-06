@@ -16,6 +16,7 @@ from __future__ import unicode_literals
 # SDL2 libraries
 import sdl2.ext
 from sdl2 import sdlgfx
+from sdl2 import sdlimage
 
 # misc
 import LSD
@@ -28,14 +29,10 @@ class FrameBuffer(object):
 			raise TypeError("ERROR: context argument should be of type LSD.SDL2Environment")
 		self.environment = environment
 		self.surface = environment.factory.create_sprite(size=environment.resolution, access=sdl2.SDL_TEXTUREACCESS_TARGET)
-		
-		# pysdl2 render object (to interface with the renderer)
 		self.renderer = environment.renderer
-		# Low-level SDL renderer (needs to be passed to all sdlgfx functions)
 		self.sdl_renderer = self.renderer.renderer
-		# Renderer for images (sprites)
-		self.spriterenderer = environment.factory.create_sprite_render_system()
 		self.background_color = background_color
+
 		self.clear()
 
 	# Decorator
@@ -51,6 +48,7 @@ class FrameBuffer(object):
 				raise Exception("Could not release FrameBuffers texture as rendering target")
 			return result
 		return wrapped
+
 
 	@to_texture
 	def clear(self, color=None):
@@ -99,7 +97,6 @@ class FrameBuffer(object):
 		color = sdl2.ext.convert_to_color(color)
 		if width < 1:
 			raise ValueError("Line width cannot be smaller than 1px")
-		
 		if width > 1:
 			return sdl2.sdlgfx.thickLineRGBA(self.sdl_renderer, x1, y1, x2, y2, width, color.r, color.g, color.b, int(opacity*255))
 		if not aa:
@@ -115,57 +112,31 @@ class FrameBuffer(object):
 	@to_texture
 	def draw_arc(self, x, y, r, start, end, color, opacity=1.0):
 		color = sdl2.ext.convert_to_color(color)
-		return sdl2.sdlgfx.arcRGBA(self.sdl_renderer, x, y, r, start, end,  color.r, color.g, color.b, int(opacity*255))
 
 	@to_texture
 	def draw_pie(self, x, y, r, start, end, color, opacity=1.0, fill=True):
 		color = sdl2.ext.convert_to_color(color)
-		if fill:
-			return sdl2.sdlgfx.filledPieRGBA(self.sdl_renderer, x, y, r, start, end, color.r, color.g, color.b, int(opacity*255))
-		else:			
-			return sdl2.sdlgfx.pieRGBA(self.sdl_renderer, x, y, r, start, end, color.r, color.g, color.b, int(opacity*255))
 
 	@to_texture
 	def draw_trigon(self, x1, y1, x2, y2, x3, y3, color, opacity=1.0, fill=True, aa=False):
 		color = sdl2.ext.convert_to_color(color)
-		if fill:
-			return sdl2.sdlgfx.filledTrigonRGBA(self.sdl_renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, int(opacity*255))
-		elif aa:
-			return sdl2.sdlgfx.aatrigonRGBA(self.sdl_renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, int(opacity*255))
-		else:
-			return sdl2.sdlgfx.trigonRGBA(self.sdl_renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, int(opacity*255))
-	
+
 	@to_texture
 	def draw_polygon(self, vx, vy, color, opacity=1.0, fill=True, aa=False, image=None):
 		color = sdl2.ext.convert_to_color(color)
-		if len(vx) != len(vy):
-			raise ValueError('vx and vy do not have the same number of items')
-		n = len(vx)		
-		if fill:
-			return sdl2.sdlgfx.filledPolygonRGBA(self.sdl_renderer, vx, vy, n, color.r, color.g, color.b, int(opacity*255))
-		elif aa:
-			return sdl2.sdlgfx.aapolygonRGBA(self.sdl_renderer, vx, vy, n, color.r, color.g, color.b, int(opacity*255))
-		else:
-			return sdl2.sdlgfx.polygonRGBA(self.sdl_renderer, vx, vy, n, color.r, color.g, color.b, int(opacity*255))
-			
+
 	@to_texture
-	def draw_bezier_curve(self, vx, vy, s, color, opacity=1.0):		
+	def draw_bezier_curve(self, vx, vy, s, color):
 		color = sdl2.ext.convert_to_color(color)
-		if len(vx) != len(vy):
-			raise ValueError('vx and vy do not have the same number of items')
-		n = len(vx)
-		return sdl2.sdlgfx.bezierRGBA(self.sdl_renderer, vx, vy, n, s, color.r, color.g, color.b, int(opacity*255))
 
 	@to_texture
 	def draw_image(self, x, y, image_path, opacity=1.0):
-		image = self.environment.factory.from_image(image_path)
-		image.position = (x,y)
-		return self.spriterenderer.render(image)
+		pass
 
 	def show(self):
 		self.renderer.copy(self.surface)
 		self.renderer.present()
 
 	def __del__(self):
-		del([self.renderer, self.surface, self.sdl_renderer, self.spriterenderer])
+		del([self.renderer, self.surface, self.sdl_renderer])
 

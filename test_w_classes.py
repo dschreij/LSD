@@ -50,5 +50,4 @@ fb6.show()
 processor = sdl2.ext.TestEventProcessor()
 processor.run(c.window)
 
-del([fb,fb2])
 sdl2.ext.quit()

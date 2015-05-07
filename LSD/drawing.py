@@ -20,6 +20,7 @@ from sdl2 import sdlgfx
 # misc
 import LSD
 from functools import wraps
+import ctypes
 
 class FrameBuffer(object):
 
@@ -27,20 +28,21 @@ class FrameBuffer(object):
 		if type(environment) != LSD.SDL2Environment:
 			raise TypeError("ERROR: context argument should be of type LSD.SDL2Environment")
 		self.environment = environment
-		self.surface = environment.factory.create_sprite(size=environment.resolution, access=sdl2.SDL_TEXTUREACCESS_TARGET)
+		self.surface = environment.texture_factory.create_sprite(size=environment.resolution, access=sdl2.SDL_TEXTUREACCESS_TARGET)
 		
 		# pysdl2 render object (to interface with the renderer)
 		self.renderer = environment.renderer
 		# Low-level SDL renderer (needs to be passed to all sdlgfx functions)
 		self.sdl_renderer = self.renderer.renderer
-		# Renderer for images (sprites)
-		self.spriterenderer = environment.factory.create_sprite_render_system()
+		# Renderer for images (sprites) as textures
+		self.spriterenderer = environment.texture_factory.create_sprite_render_system()
+		
+		# Renderer for images (sprites) as surfaces (software mode)		
 		self.background_color = background_color
 		self.clear()
 
 	# Decorator
 	def to_texture(drawing_function):
-		
 		@wraps(drawing_function)
 		def wrapped(inst, *args, **kwargs):
 			tex_set = sdl2.SDL_SetRenderTarget(inst.sdl_renderer, inst.surface.texture)
@@ -137,12 +139,24 @@ class FrameBuffer(object):
 			return sdl2.sdlgfx.trigonRGBA(self.sdl_renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, int(opacity*255))
 	
 	@to_texture
-	def draw_polygon(self, vx, vy, color, opacity=1.0, fill=True, aa=False, image=None):
+	def draw_polygon(self, vx, vy, color, opacity=1.0, fill=True, aa=False, texture=None):
 		color = sdl2.ext.convert_to_color(color)
 		if len(vx) != len(vy):
 			raise ValueError('vx and vy do not have the same number of items')
-		n = len(vx)		
-		if fill:
+		n = len(vx)
+		
+		# Make sure all coordinates are integers
+		vx = map(int,vx)
+		vy = map(int,vy)
+		# Cast the list to the appropriate ctypes vectors reabable by
+		# the polygon functions
+		vx = ctypes.cast((sdl2.Sint16*n)(*vx), ctypes.POINTER(sdl2.Sint16))
+		vy = ctypes.cast((sdl2.Sint16*n)(*vy), ctypes.POINTER(sdl2.Sint16))
+		
+		if texture:
+			sprite = self.environment.surface_factory.from_image(texture)
+			return sdl2.sdlgfx.texturedPolygon(self.sdl_renderer, vx, vy, n, sprite.surface, ctypes.c_int(0), ctypes.c_int(0))
+		elif fill:
 			return sdl2.sdlgfx.filledPolygonRGBA(self.sdl_renderer, vx, vy, n, color.r, color.g, color.b, int(opacity*255))
 		elif aa:
 			return sdl2.sdlgfx.aapolygonRGBA(self.sdl_renderer, vx, vy, n, color.r, color.g, color.b, int(opacity*255))
@@ -155,11 +169,20 @@ class FrameBuffer(object):
 		if len(vx) != len(vy):
 			raise ValueError('vx and vy do not have the same number of items')
 		n = len(vx)
+		
+		# Make sure all coordinates are integers
+		vx = map(int,vx)
+		vy = map(int,vy)
+		# Cast the list to the appropriate ctypes vectors reabable by
+		# the polygon functions
+		vx = ctypes.cast((sdl2.Sint16*n)(*vx), ctypes.POINTER(sdl2.Sint16))
+		vy = ctypes.cast((sdl2.Sint16*n)(*vy), ctypes.POINTER(sdl2.Sint16))
+		
 		return sdl2.sdlgfx.bezierRGBA(self.sdl_renderer, vx, vy, n, s, color.r, color.g, color.b, int(opacity*255))
 
 	@to_texture
-	def draw_image(self, x, y, image_path, opacity=1.0):
-		image = self.environment.factory.from_image(image_path)
+	def draw_image(self, x, y, image_path):
+		image = self.environment.texture_factory.from_image(image_path)
 		image.position = (x,y)
 		return self.spriterenderer.render(image)
 

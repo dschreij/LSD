@@ -19,11 +19,12 @@ __author__ = 'Daniel Schreij'
 
 class SDL2Environment(object):
 
-	def __init__(self, window, resolution, renderer, factory):
+	def __init__(self, window, resolution, renderer, texture_factory, surface_factory):
 		self.window = window
 		self.resolution = resolution
 		self.renderer = renderer
-		self.factory = factory
+		self.texture_factory = texture_factory
+		self.surface_factory = surface_factory
 
 		# Get the rest of the info by quering SDL2 itself
 		# Only for screen 1 for now
@@ -103,23 +104,30 @@ Displays:
 		return drivers
 
 
-def create_window(resolution,title="SDL2 Display Window"):
+def create_window(resolution,title="SDL2 Display Window", fullscreen=False):
 	global current_sdl2_environment
 	if type(resolution) != tuple and len(resolution) != 2:
 		raise TypeError("Please make sure the resolution variable is a tuple with (width,height)")
 	(width,height) = resolution
 	sdl2.ext.init()
-	window = sdl2.ext.Window(title, size=(width, height))
+
+	flags = None
+	if fullscreen:
+		flags = flags|sdl2.SDL_WINDOW_FULLSCREEN
+	
+	window = sdl2.ext.Window(title, size=(width, height), flags=flags)
 	window.show()
 
 	# Create a render system that renders to the window surface
 	renderer = sdl2.ext.Renderer(window)
 	renderer.clear(0)
 	renderer.present()
+	# Create sprite factory to create textures with later
+	texture_factory = sdl2.ext.SpriteFactory(renderer=renderer)
 	# Create sprite factory to create surfaces with later
-	factory = sdl2.ext.SpriteFactory(renderer=renderer)
+	surface_factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
 
-	sdl2env = SDL2Environment(window,resolution,renderer,factory)
+	sdl2env = SDL2Environment(window,resolution,renderer, texture_factory, surface_factory)
 	current_sdl2_environment= sdl2env
 	window.refresh()
 	return sdl2env

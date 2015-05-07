@@ -9,8 +9,9 @@ import LSD
 import sdl2.ext
 from LSD.drawing import FrameBuffer
 from random import randint
+from math import pi, cos, sin
 
-c = LSD.create_window((800,600))
+c = LSD.create_window((1024,768))
 
 print c
 
@@ -19,6 +20,7 @@ fb = FrameBuffer(c, background_color="#222222")
 row1 = 50
 row2 = 150
 row3 = 320
+row4 = 470
 
 # Circle
 fb.draw_circle(50, row1, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=False)
@@ -74,6 +76,37 @@ fb.draw_trigon(x, row3+80, x+80, row3+80, x+40, row3, color=randint(0, 0xFFFFFFF
 # Filled trigon
 x += 100
 fb.draw_trigon(x, row3, x+80, row3, x+40, row3+80, color=randint(0, 0xFFFFFFFF), fill=True, aa=False)
+
+# Polygon
+x = 50
+points = 6
+r = 40
+vx = [cos((2*pi/points)*i)*r+x for i in range(0,points)]
+vy = [sin((2*pi/points)*i)*r+row4 for i in range(0,points)]
+fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), fill=False, aa=False)
+# AA Polygon
+x += 102
+vx = [cos((2*pi/points)*i)*r+x for i in range(0,points)]
+vy = [sin((2*pi/points)*i)*r+row4 for i in range(0,points)]
+fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), fill=False, aa=True)
+# FilledPolygon
+x += 100
+vx = [cos((2*pi/points)*i)*r+x for i in range(0,points)]
+vy = [sin((2*pi/points)*i)*r+row4 for i in range(0,points)]
+fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), fill=True, aa=True)
+# Textured polygon (not working)
+RESOURCES = sdl2.ext.Resources(__file__, "LSD/resources")
+x += 100
+vx = [x, x+200, x+200, x]
+vy = [row4-50, row4-50, row4+50, row4+50]
+#fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), texture=RESOURCES.get_path("Memory.jpeg"))
+
+# Bezier curve
+fb.draw_bezier_curve(vx, vy, 50, color=randint(0, 0xFFFFFFFF))
+
+x += 200
+fb.draw_image(x, row4-50, RESOURCES.get_path("Memory.jpeg"))
+
 
 fb.show()
 

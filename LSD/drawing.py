@@ -155,7 +155,7 @@ class FrameBuffer(object):
 		
 		if texture:
 			sprite = self.environment.surface_factory.from_image(texture)
-			return sdl2.sdlgfx.texturedPolygon(self.sdl_renderer, vx, vy, n, sprite.surface, ctypes.c_int(0), ctypes.c_int(0))
+			return sdl2.sdlgfx.texturedPolygon(self.sdl_renderer, vx, vy, n, sprite.surface, 0, 0)
 		elif fill:
 			return sdl2.sdlgfx.filledPolygonRGBA(self.sdl_renderer, vx, vy, n, color.r, color.g, color.b, int(opacity*255))
 		elif aa:
@@ -187,7 +187,7 @@ class FrameBuffer(object):
 		return self.spriterenderer.render(image)
 
 	def show(self):
-		self.renderer.clear()
+		self.renderer.clear(0)
 		self.renderer.copy(self.surface)
 		return self.renderer.present()
 

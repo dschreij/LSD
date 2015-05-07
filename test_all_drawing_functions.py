@@ -94,18 +94,19 @@ x += 100
 vx = [cos((2*pi/points)*i)*r+x for i in range(0,points)]
 vy = [sin((2*pi/points)*i)*r+row4 for i in range(0,points)]
 fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), fill=True, aa=True)
+
 # Textured polygon (not working)
 RESOURCES = sdl2.ext.Resources(__file__, "LSD/resources")
 x += 100
 vx = [x, x+200, x+200, x]
 vy = [row4-50, row4-50, row4+50, row4+50]
-#fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), texture=RESOURCES.get_path("Memory.jpeg"))
+fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), texture=RESOURCES.get_path("Memory.jpeg"))
 
 # Bezier curve
-fb.draw_bezier_curve(vx, vy, 50, color=randint(0, 0xFFFFFFFF))
+#fb.draw_bezier_curve(vx, vy, 50, color=randint(0, 0xFFFFFFFF))
 
 x += 200
-fb.draw_image(x, row4-50, RESOURCES.get_path("Memory.jpeg"))
+#fb.draw_image(x, row4-50, RESOURCES.get_path("Memory.jpeg"))
 
 
 fb.show()

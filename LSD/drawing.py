@@ -37,6 +37,8 @@ class FrameBuffer(object):
 		# Renderer for images (sprites) as textures
 		self.spriterenderer = environment.texture_factory.create_sprite_render_system()
 		
+		environment.active_framebuffers.append(self)
+		
 		# Renderer for images (sprites) as surfaces (software mode)		
 		self.background_color = background_color
 		self.clear()
@@ -54,48 +56,114 @@ class FrameBuffer(object):
 				raise Exception("Could not release FrameBuffers texture as rendering target")
 			return result
 		return wrapped
-
+		
 	@to_texture
 	def clear(self, color=None):
 		if color is None:
 			color = self.background_color
 		color = sdl2.ext.convert_to_color(color)
 		self.renderer.clear(color)
+		return self
 
 	@to_texture
-	def draw_circle(self, x, y, r, color, opacity=1.0, fill=True, aa=False):
+	def draw_circle(self, x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1):
 		color = sdl2.ext.convert_to_color(color)
-		if fill:
-			return sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
-		elif aa:
-			return sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+		
+		if penwidth != 1:
+			if penwidth < 1:
+				raise ValueError("Penwidth cannot be smaller than 1")
+			if penwidth > 1:
+				penwidth = int(penwidth)
+			start_r = r - int(penwidth/2)
+			if start_r < 1:
+				raise ValueError("Penwidth to large for a circle with this radius")
+			r_s = range(start_r,start_r+penwidth)
 		else:
-			return sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+			r_s = [r]			
+		
+		if fill:
+			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+		elif aa:
+			for r in r_s:
+				if r == r_s[0] or r == r_s[-1]:
+					sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+				else:
+					sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+		else:
+			for r in r_s:
+				sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+		return self
 
 	@to_texture
-	def draw_ellipse(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False):
+	def draw_ellipse(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False, penwidth=1):
 		color = sdl2.ext.convert_to_color(color)
+		
+		if penwidth != 1:
+			if penwidth < 1:
+				raise ValueError("Penwidth cannot be smaller than 1")
+			if penwidth > 1:
+				penwidth = int(penwidth)
+			start_rx = rx - int(penwidth/2)
+			start_ry = ry - int(penwidth/2)
+			if start_rx < 1 or start_ry < 1:
+				raise ValueError("Penwidth to large for a ellipse with this radius")
+			rx_s = range(start_rx,start_rx+penwidth)
+			ry_s = range(start_ry,start_ry+penwidth)
+			r_s = zip(rx_s,ry_s)
+		else:
+			r_s = [(rx,ry)]
 
 		if fill:
 			return sdl2.sdlgfx.filledEllipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
 		elif aa:
-			return sdl2.sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+			for rx, ry in r_s:
+				if (rx, ry) == r_s[0] or (rx, ry) == r_s[-1]:
+					sdl2.sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+				else:
+					sdl2.sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
 		else:
-			return sdl2.sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+			for rx, ry in r_s:
+				sdl2.sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+		return self
 
 	@to_texture
-	def draw_rect(self, x, y, w, h, color, opacity=1.0, fill=True, border_radius=0):
+	def draw_rect(self, x, y, w, h, color, opacity=1.0, fill=True, border_radius=0, penwidth=1):
 		color = sdl2.ext.convert_to_color(color)
+		
+		if penwidth != 1:
+			if penwidth < 1:
+				raise ValueError("Penwidth cannot be smaller than 1")
+			if penwidth > 1:
+				penwidth = int(penwidth)
+			start_x = x - int(penwidth/2)
+			start_y = y - int(penwidth/2)
+			start_w = w - int(penwidth)
+			start_h = h - int(penwidth)
+			
+			if start_x < 1 or start_y < 1:
+				raise ValueError("Penwidth to large for a rect with these dimensions")
+			
+			x_s = range(start_x,start_x+penwidth)
+			y_s = range(start_y,start_y+penwidth)
+			w_s = range(start_w+2*penwidth, start_w, -2)
+			h_s = range(start_h+2*penwidth, start_h, -2)
+			rects = zip(x_s,y_s,w_s,h_s)
+		else:
+			rects = ((x,y,w,h))
+			
 		if fill:
 			if border_radius > 0:
-				return sdl2.sdlgfx.roundedBoxRGBA(self.sdl_renderer, x, y, x+w, y+h, border_radius, color.r, color.g, color.b, int(opacity*255))
+				sdl2.sdlgfx.roundedBoxRGBA(self.sdl_renderer, x, y, x+w, y+h, border_radius, color.r, color.g, color.b, int(opacity*255))
 			else:
-				return sdl2.sdlgfx.boxRGBA(self.sdl_renderer, x, y, x+w, y+h, color.r, color.g, color.b, int(opacity*255))
+				sdl2.sdlgfx.boxRGBA(self.sdl_renderer, x, y, x+w, y+h, color.r, color.g, color.b, int(opacity*255))
 		else:
-			if border_radius > 0:
-				return sdl2.sdlgfx.roundedRectangleRGBA(self.sdl_renderer, x, y, x+w, y+h, border_radius, color.r, color.g, color.b, int(opacity*255))
-			else:
-				return sdl2.sdlgfx.rectangleRGBA(self.sdl_renderer, x, y, x+w, y+h, color.r, color.g, color.b, int(opacity*255))
+			for x,y,w,h in rects:
+				if border_radius > 0:
+					sdl2.sdlgfx.roundedRectangleRGBA(self.sdl_renderer, x, y, x+w, y+h, border_radius, color.r, color.g, color.b, int(opacity*255))
+				else:
+					sdl2.sdlgfx.rectangleRGBA(self.sdl_renderer, x, y, x+w, y+h, color.r, color.g, color.b, int(opacity*255))
+		return self
+			
 
 	@to_texture
 	def draw_line(self, x1, y1, x2, y2, color, opacity=1.0, aa=False, width=1):
@@ -116,9 +184,23 @@ class FrameBuffer(object):
 		return sdl2.sdlgfx.stringRGBA(self.sdl_renderer, x, y, text, color.r, color.g, color.b, int(opacity*255))
 
 	@to_texture
-	def draw_arc(self, x, y, r, start, end, color, opacity=1.0):
+	def draw_arc(self, x, y, r, start, end, color, opacity=1.0, penwidth=1):
 		color = sdl2.ext.convert_to_color(color)
-		return sdl2.sdlgfx.arcRGBA(self.sdl_renderer, x, y, r, start, end,  color.r, color.g, color.b, int(opacity*255))
+		if penwidth != 1:
+			if penwidth < 1:
+				raise ValueError("Penwidth cannot be smaller than 1")
+			if penwidth > 1:
+				penwidth = int(penwidth)
+			start_r = r - int(penwidth/2)
+			if start_r < 1:
+				raise ValueError("Penwidth to large for a circle with this radius")
+			r_s = range(start_r,start_r+penwidth)
+		else:
+			r_s = [r]
+			
+		if not r_s is None:
+			for r in r_s:
+				sdl2.sdlgfx.arcRGBA(self.sdl_renderer, x, y, r, start, end,  color.r, color.g, color.b, int(opacity*255))
 
 	@to_texture
 	def draw_pie(self, x, y, r, start, end, color, opacity=1.0, fill=True):

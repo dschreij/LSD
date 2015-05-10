@@ -23,21 +23,21 @@ row3 = 320
 row4 = 470
 
 # Circle
-fb.draw_circle(50, row1, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=False)
+fb.draw_circle(50, row1, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=False, penwidth=5)
 # Anti aliased circle
-fb.draw_circle(150, row1, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=True)
+fb.draw_circle(150, row1, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=True, penwidth=8)
 # Filled circle
 fb.draw_circle(250, row1, 40, color=randint(0, 0xFFFFFFFF), fill=True, aa=True)
 
 # Ellipse
-fb.draw_ellipse(400, row1, 60, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=False)
+fb.draw_ellipse(400, row1, 60, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=False, penwidth=10)
 # Anti aliased ellipse
-fb.draw_ellipse(550, row1, 60, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=True)
+fb.draw_ellipse(550, row1, 60, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=True, penwidth=5)
 # Filled ellipse
 fb.draw_ellipse(700, row1, 60, 40, color=randint(0, 0xFFFFFFFF), fill=True, aa=False)
 
 # Rect
-fb.draw_rect(50, row2, 80, 80, color=randint(0, 0xFFFFFFFF), fill=False)
+fb.draw_rect(50, row2, 80, 80, color=randint(0, 0xFFFFFFFF), fill=False, penwidth=10)
 # Filled rect
 fb.draw_rect(150, row2, 80, 80, color=randint(0, 0xFFFFFFFF), fill=True)
 
@@ -54,7 +54,7 @@ fb.draw_text(600, row2, "Test 1 2 3", color=randint(0, 0xFFFFFFFF) )
 # Arc
 start = randint(0,90)
 end = randint(180,270)
-fb.draw_arc(50, row3, 40, start, end, color=randint(0, 0xFFFFFFFF))
+fb.draw_arc(50, row3, 40, start, end, color=randint(0, 0xFFFFFFFF), penwidth=5)
 
 # Pie
 start = randint(0,90)
@@ -100,13 +100,13 @@ RESOURCES = sdl2.ext.Resources(__file__, "LSD/resources")
 x += 100
 vx = [x, x+200, x+200, x]
 vy = [row4-50, row4-50, row4+50, row4+50]
-fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), texture=RESOURCES.get_path("Memory.jpeg"))
+#fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), texture=RESOURCES.get_path("Memory.jpeg"))
 
 # Bezier curve
-#fb.draw_bezier_curve(vx, vy, 50, color=randint(0, 0xFFFFFFFF))
+fb.draw_bezier_curve(vx, vy, 50, color=randint(0, 0xFFFFFFFF))
 
 x += 200
-#fb.draw_image(x, row4-50, RESOURCES.get_path("Memory.jpeg"))
+fb.draw_image(x, row4-50, RESOURCES.get_path("Memory.jpeg"))
 
 
 fb.show()

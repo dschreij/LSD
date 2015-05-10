@@ -25,6 +25,7 @@ class SDL2Environment(object):
 		self.renderer = renderer
 		self.texture_factory = texture_factory
 		self.surface_factory = surface_factory
+		self.active_framebuffers = []
 
 		# Get the rest of the info by quering SDL2 itself
 		# Only for screen 1 for now

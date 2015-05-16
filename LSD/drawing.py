@@ -41,6 +41,7 @@ class FrameBuffer(object):
 		
 		# Renderer for images (sprites) as surfaces (software mode)		
 		self.background_color = background_color
+		self.__bgcolor = sdl2.ext.convert_to_color(background_color)
 		self.clear()
 
 	# Decorator
@@ -66,7 +67,7 @@ class FrameBuffer(object):
 		return self
 
 	@to_texture
-	def draw_circle(self, x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1):
+	def draw_circle_alt(self, x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1):
 		color = sdl2.ext.convert_to_color(color)
 		
 		if penwidth != 1:
@@ -93,9 +94,45 @@ class FrameBuffer(object):
 			for r in r_s:
 				sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
 		return self
+	
+	@to_texture
+	def draw_circle(self, x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1):
+		color = sdl2.ext.convert_to_color(color)
+		
+		if penwidth != 1:
+			if penwidth < 1:
+				raise ValueError("Penwidth cannot be smaller than 1")
+			if penwidth > 1:
+				penwidth = int(penwidth)
+			start_r = r - int(penwidth/2)
+			if start_r < 1:
+				raise ValueError("Penwidth to large for a circle with this radius")	
+		
+		if fill:
+			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+			if aa:
+				sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+				sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r-1, color.r, color.g, color.b, int(opacity*255))
+				sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r+1, color.r, color.g, color.b, int(opacity*255))	
+		elif penwidth == 1:
+			if aa:
+				sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+			else:
+				sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+		else:		
+			#Outer circle
+			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r+penwidth, color.r, color.g, color.b, int(opacity*255))
+			#Inner circle
+			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r, self.__bgcolor.r, self.__bgcolor.g, self.__bgcolor.b, 255)
+			if aa:
+				for r in range(start_r+penwidth-1, start_r+penwidth+1):
+					sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+				for r in range(start_r, start_r+2):
+					sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+		return self
 
 	@to_texture
-	def draw_ellipse(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False, penwidth=1):
+	def draw_ellipse_alt(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False, penwidth=1):
 		color = sdl2.ext.convert_to_color(color)
 		
 		if penwidth != 1:
@@ -114,7 +151,7 @@ class FrameBuffer(object):
 			r_s = [(rx,ry)]
 
 		if fill:
-			return sdl2.sdlgfx.filledEllipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+			sdlgfx.filledEllipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
 		elif aa:
 			for rx, ry in r_s:
 				if (rx, ry) == r_s[0] or (rx, ry) == r_s[-1]:
@@ -124,6 +161,42 @@ class FrameBuffer(object):
 		else:
 			for rx, ry in r_s:
 				sdl2.sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+		return self
+		
+	@to_texture
+	def draw_ellipse(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False, penwidth=1):
+		color = sdl2.ext.convert_to_color(color)
+		
+		if penwidth != 1:
+			if penwidth < 1:
+				raise ValueError("Penwidth cannot be smaller than 1")
+			if penwidth > 1:
+				penwidth = int(penwidth)
+			start_x = x-int(penwidth/2)
+			start_y = y-int(penwidth/2)
+			start_rx = rx - int(penwidth/2)
+			start_ry = ry - int(penwidth/2)
+			if start_rx < 1 or start_ry < 1:
+				raise ValueError("Penwidth to large for a ellipse with this radius")
+
+		if fill:
+			sdlgfx.filledEllipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+			if aa:
+				sdlgfx.aaellipseRGBA(self.sdl_renderer, x-1, y-1, rx+2, ry+2, color.r, color.g, color.b, int(opacity*255))				
+		
+		elif penwidth == 1:
+			if aa:
+				sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+			else:
+				sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+		else:
+			#Outer circle
+			sdlgfx.filledEllipseRGBA(self.sdl_renderer, start_x, start_y, start_rx+penwidth, start_ry+penwidth, color.r, color.g, color.b, int(opacity*255))
+			#Inner circle
+			sdlgfx.filledEllipseRGBA(self.sdl_renderer, start_x+penwidth, start_y+penwidth, start_rx, start_ry, self.__bgcolor.r, self.__bgcolor.g, self.__bgcolor.b, 255)			
+			if aa:
+				sdlgfx.aaellipseRGBA(self.sdl_renderer, start_x-1, start_y-1, start_rx+penwidth+2, start_ry+penwidth+2, color.r, color.g, color.b, int(opacity*255))
+				sdlgfx.aaellipseRGBA(self.sdl_renderer, start_x, start_y, start_rx, start_ry, color.r, color.g, color.b, int(opacity*255))
 		return self
 
 	@to_texture

@@ -17,7 +17,7 @@ print c
 
 fb = FrameBuffer(c, background_color="#222222")
 
-row1 = 50
+row1 = 60
 row2 = 150
 row3 = 320
 row4 = 470
@@ -25,7 +25,7 @@ row4 = 470
 # Circle
 fb.draw_circle(50, row1, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=False, penwidth=5)
 # Anti aliased circle
-fb.draw_circle(150, row1, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=True, penwidth=8)
+fb.draw_circle(150, row1, 45, color=randint(0, 0xFFFFFFFF), fill=False, aa=True, penwidth=5)
 # Filled circle
 fb.draw_circle(250, row1, 40, color=randint(0, 0xFFFFFFFF), fill=True, aa=True)
 

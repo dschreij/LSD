@@ -48,10 +48,8 @@ vy = ctypes.cast((sdl2.Sint16*n)(*vy), ctypes.POINTER(sdl2.Sint16))
 texture = surface_factory.from_image(image_path)
 
 ## RENDER THE POLYGON WITH TEXTURE
-sdl2.sdlgfx.texturedPolygon(renderer.renderer, vx, vy, n, texture.surface, 150, 50)
-
-# Swap buffers
-renderer.present()
+sdl2.sdlgfx.filledCircleRGBA(renderer.renderer, 30, 30, 25, 255, 255, 255, 255)
+sdl2.sdlgfx.texturedPolygon(renderer.renderer, vx, vy, n, texture.surface, 50, 50)
 
 # Handle window close events
 processor = sdl2.ext.TestEventProcessor()

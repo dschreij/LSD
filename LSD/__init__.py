@@ -136,6 +136,7 @@ def create_window(resolution,title="SDL2 Display Window", fullscreen=False):
 def destroy_window():
 	global current_sdl2_environment
 	current_sdl2_environment = None
+	del(current_sdl2_environment)
 	sdl2.ext.quit()
 
 current_sdl2_environment = None

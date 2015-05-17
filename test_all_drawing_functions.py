@@ -30,11 +30,11 @@ fb.draw_circle(150, row1, 45, color=randint(0, 0xFFFFFFFF), fill=False, aa=True,
 fb.draw_circle(250, row1, 40, color=randint(0, 0xFFFFFFFF), fill=True, aa=True)
 
 # Ellipse
-fb.draw_ellipse(400, row1, 60, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=False, penwidth=10)
+fb.draw_ellipse(400, row1, 60, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=False, penwidth=5)
 # Anti aliased ellipse
-fb.draw_ellipse(550, row1, 60, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=True, penwidth=5)
+fb.draw_ellipse(550, row1, 60, 50, color=randint(0, 0xFFFFFFFF), fill=False, aa=True, penwidth=5)
 # Filled ellipse
-fb.draw_ellipse(700, row1, 60, 40, color=randint(0, 0xFFFFFFFF), fill=True, aa=False)
+fb.draw_ellipse(700, row1, 60, 40, color=randint(0, 0xFFFFFFFF), fill=True, aa=True)
 
 # Rect
 fb.draw_rect(50, row2, 80, 80, color=randint(0, 0xFFFFFFFF), fill=False, penwidth=10)
@@ -110,9 +110,6 @@ fb.draw_bezier_curve(vx, vy, 50, color=randint(0, 0xFFFFFFFF))
 
 x += 200
 fb.draw_image(x, row4-50, RESOURCES.get_path("Memory.jpeg"))
-
-
-
 
 fb.show()
 

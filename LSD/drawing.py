@@ -182,7 +182,8 @@ class FrameBuffer(object):
 		if fill:
 			sdlgfx.filledEllipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
 			if aa:
-				sdlgfx.aaellipseRGBA(self.sdl_renderer, x-1, y-1, rx+2, ry+2, color.r, color.g, color.b, int(opacity*255))				
+				sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+				sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
 		
 		elif penwidth == 1:
 			if aa:
@@ -193,10 +194,14 @@ class FrameBuffer(object):
 			#Outer circle
 			sdlgfx.filledEllipseRGBA(self.sdl_renderer, start_x, start_y, start_rx+penwidth, start_ry+penwidth, color.r, color.g, color.b, int(opacity*255))
 			#Inner circle
-			sdlgfx.filledEllipseRGBA(self.sdl_renderer, start_x+penwidth, start_y+penwidth, start_rx, start_ry, self.__bgcolor.r, self.__bgcolor.g, self.__bgcolor.b, 255)			
+			sdlgfx.filledEllipseRGBA(self.sdl_renderer, start_x, start_y, start_rx, start_ry, self.__bgcolor.r, self.__bgcolor.g, self.__bgcolor.b, 255)			
 			if aa:
-				sdlgfx.aaellipseRGBA(self.sdl_renderer, start_x-1, start_y-1, start_rx+penwidth+2, start_ry+penwidth+2, color.r, color.g, color.b, int(opacity*255))
-				sdlgfx.aaellipseRGBA(self.sdl_renderer, start_x, start_y, start_rx, start_ry, color.r, color.g, color.b, int(opacity*255))
+				# Outer circle				
+				sdlgfx.ellipseRGBA(self.sdl_renderer, start_x, start_y, start_rx+penwidth, start_ry+penwidth, color.r, color.g, color.b, int(opacity*255))
+				sdlgfx.aaellipseRGBA(self.sdl_renderer, start_x, start_y, start_rx+penwidth, start_ry+penwidth, color.r, color.g, color.b, int(opacity*255))
+				# Inner circle				
+				sdlgfx.aaellipseRGBA(self.sdl_renderer, start_x, start_y, start_rx, start_ry, color.r, color.g, color.b, int(opacity*255))				
+				sdlgfx.aaellipseRGBA(self.sdl_renderer, start_x, start_y, start_rx, start_ry-1, color.r, color.g, color.b, int(opacity*255))
 		return self
 
 	@to_texture

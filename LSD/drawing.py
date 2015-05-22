@@ -14,6 +14,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 # SDL2 libraries
+import sdl2
 import sdl2.ext
 from sdl2 import sdlgfx
 
@@ -51,7 +52,9 @@ class FrameBuffer(object):
 			tex_set = sdl2.SDL_SetRenderTarget(inst.sdl_renderer, inst.surface.texture)
 			if tex_set != 0:
 				raise Exception("Could not set FrameBuffers texture as rendering target")
+			#sdl2.SDL_SetColorKey(inst.sdl_renderer, sdl2.SDL_TRUE, inst.__bgcolor)
 			result = drawing_function(inst, *args, **kwargs)
+			#sdl2.SDL_SetColorKey(inst.sdl_renderer, sdl2.SDL_FALSE, inst.__bgcolor)
 			tex_unset = sdl2.SDL_SetRenderTarget(inst.sdl_renderer, None)
 			if tex_unset != 0:
 				raise Exception("Could not release FrameBuffers texture as rendering target")
@@ -68,6 +71,11 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_circle_alt(self, x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1):
+		# Make sure all spatial parameters are ints
+		x = int(x)
+		y = int(y)
+		r = int(r)
+		
 		color = sdl2.ext.convert_to_color(color)
 
 		if penwidth != 1:
@@ -97,6 +105,11 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_circle(self, x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1):
+		# Make sure all spatial parameters are ints
+		x = int(x)
+		y = int(y)
+		r = int(r)
+		
 		color = sdl2.ext.convert_to_color(color)
 		if penwidth != 1:
 			if penwidth < 1:
@@ -122,6 +135,9 @@ class FrameBuffer(object):
 			#Outer circle
 			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r+penwidth, color.r, color.g, color.b, int(opacity*255))
 			#Inner circle
+#			print(sdl2.SDL_SetTextureBlendMode(self.surface.texture, sdl2.SDL_BLENDMODE_NONE)) 			
+#			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r, 255, 255, 255, 100)
+#			print(sdl2.SDL_SetTextureBlendMode(self.surface.texture, sdl2.SDL_BLENDMODE_BLEND))			
 			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r, self.__bgcolor.r, self.__bgcolor.g, self.__bgcolor.b, 255)
 			if aa:
 				for r in range(start_r+penwidth-1, start_r+penwidth+1):
@@ -132,6 +148,12 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_ellipse_alt(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False, penwidth=1):
+		# Make sure all spatial parameters are ints
+		x = int(x)
+		y = int(y)
+		rx = int(rx)
+		ry = int(ry)	
+		
 		color = sdl2.ext.convert_to_color(color)
 
 		if penwidth != 1:
@@ -164,6 +186,12 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_ellipse(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False, penwidth=1):
+		# Make sure all spatial parameters are ints
+		x = int(x)
+		y = int(y)
+		rx = int(rx)
+		ry = int(ry)			
+		
 		color = sdl2.ext.convert_to_color(color)
 
 		if penwidth != 1:
@@ -205,6 +233,12 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_rect(self, x, y, w, h, color, opacity=1.0, fill=True, border_radius=0, penwidth=1):
+		# Make sure all spatial parameters are ints
+		x = int(x)
+		y = int(y)
+		w = int(w)
+		h = int(h)					
+		
 		color = sdl2.ext.convert_to_color(color)
 
 		if penwidth != 1:
@@ -226,7 +260,7 @@ class FrameBuffer(object):
 			h_s = range(start_h+2*penwidth, start_h, -2)
 			rects = zip(x_s,y_s,w_s,h_s)
 		else:
-			rects = ((x,y,w,h))
+			rects = [(x,y,w,h)]
 
 		if fill:
 			if border_radius > 0:
@@ -244,6 +278,12 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_line(self, x1, y1, x2, y2, color, opacity=1.0, aa=False, width=1):
+		# Make sure all spatial parameters are ints
+		x1 = int(x1)
+		y1 = int(y1)
+		x2 = int(x2)
+		y2 = int(y2)		
+		
 		color = sdl2.ext.convert_to_color(color)
 		if width < 1:
 			raise ValueError("Line width cannot be smaller than 1px")
@@ -257,12 +297,21 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_text(self, x, y, text, color, opacity=1.0):
+		# Make sure all spatial parameters are ints
+		x = int(x)
+		y = int(y)
+
 		color = sdl2.ext.convert_to_color(color)
 		sdl2.sdlgfx.stringRGBA(self.sdl_renderer, x, y, text, color.r, color.g, color.b, int(opacity*255))
 		return self
 
 	@to_texture
 	def draw_arc(self, x, y, r, start, end, color, opacity=1.0, penwidth=1):
+		# Make sure all spatial parameters are ints
+		x = int(x)
+		y = int(y)
+		r = int(r)
+		
 		color = sdl2.ext.convert_to_color(color)
 		if penwidth != 1:
 			if penwidth < 1:
@@ -283,6 +332,11 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_pie(self, x, y, r, start, end, color, opacity=1.0, fill=True):
+		# Make sure all spatial parameters are ints
+		x = int(x)
+		y = int(y)
+		r = int(r)
+		
 		color = sdl2.ext.convert_to_color(color)
 		if fill:
 			return sdl2.sdlgfx.filledPieRGBA(self.sdl_renderer, x, y, r, start, end, color.r, color.g, color.b, int(opacity*255))
@@ -292,6 +346,14 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_trigon(self, x1, y1, x2, y2, x3, y3, color, opacity=1.0, fill=True, aa=False):
+		# Make sure all spatial parameters are ints
+		x1 = int(x1)
+		y1 = int(y1)
+		x2 = int(x2)
+		y2 = int(y2)
+		x3 = int(x3)
+		y3 = int(y3)
+		
 		color = sdl2.ext.convert_to_color(color)
 		if fill:
 			return sdl2.sdlgfx.filledTrigonRGBA(self.sdl_renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, int(opacity*255))
@@ -352,6 +414,9 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_image(self, x, y, image_path):
+		x = int(x)
+		y = int(y)
+		
 		image = self.environment.texture_factory.from_image(image_path)
 		image.position = (x,y)
 		self.spriterenderer.render(image)

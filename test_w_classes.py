@@ -22,7 +22,7 @@ fb4 = FrameBuffer(c)
 fb5 = FrameBuffer(c, background_color="#999999")
 fb6 = FrameBuffer(c)
 
-for i in range(0,150):
+for i in range(0,250):
 	fb.draw_circle(randint(0,750), randint(0,550), 40, color=randint(0, 0xFFFFFFFF),fill=False, aa=True)
 	fb2.draw_rect(randint(0,750), randint(0,550), randint(10,100), randint(10,100), (255,0,0), opacity=randint(5,10)/10.0, fill=False)
 	fb3.draw_rect(randint(0,750), randint(0,550), randint(10,100), randint(10,100), (0,255,0), opacity=randint(5,10)/10.0, border_radius=5, fill=True)

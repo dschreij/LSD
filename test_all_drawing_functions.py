@@ -23,7 +23,7 @@ row3 = 320
 row4 = 470
 
 # Circle
-fb.draw_circle(50, row1, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=False, penwidth=5)
+fb.draw_circle(50, row1, 40, color=randint(0, 0xFFFFFFFF), fill=False, aa=False, penwidth=1)
 # Anti aliased circle
 fb.draw_circle(150, row1, 45, color=randint(0, 0xFFFFFFFF), fill=False, aa=True, penwidth=5)
 # Filled circle
@@ -95,7 +95,7 @@ vx = [cos((2*pi/points)*i)*r+x for i in range(0,points)]
 vy = [sin((2*pi/points)*i)*r+row4 for i in range(0,points)]
 fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), fill=True, aa=True)
 
-# Textured polygon (not working)
+# Textured polygon (Needs sdl2_gfx > 1.0.1 to work correctly)
 RESOURCES = sdl2.ext.Resources(__file__, "LSD/resources")
 x += 100
 vx = [cos((2*pi/points)*i)*r+x for i in range(0,points)]

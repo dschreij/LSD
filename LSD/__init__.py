@@ -41,7 +41,7 @@ class SDL2Environment(object):
 			res = sdl2.SDL_GetCurrentDisplayMode(dispnum, dispinfo)
 			if res == 0:
 				self.displays.append(dispinfo)
-				
+
 		self.display_drivers = [sdl2.video.SDL_GetVideoDriver(i) for i in range(sdl2.video.SDL_GetNumVideoDrivers())]
 		self.display_driver = sdl2.SDL_GetCurrentVideoDriver()
 
@@ -57,7 +57,7 @@ General:
 
 Displays:
 	Available display drivers: {}
-	Currrent display driver: {}
+	Current display driver: {}
 	Number of displays detected: {}
 		""".format(
 			__version__,
@@ -78,7 +78,7 @@ Displays:
 		return infostring
 
 	def info(self):
-		info = { 
+		info = {
 			"LSD version":__version__,
 			"PySDL2 version":self.pysdl2_version,
 			"SDL2 version":self.sdl2_version,
@@ -88,14 +88,14 @@ Displays:
 			"Window dimensions":self.resolution,
 			"Available display drivers":self.display_drivers,
 		}
-		
+
 		for dispnum, display in enumerate(self.displays):
-			cur_disp_info = {}			
+			cur_disp_info = {}
 			cur_disp_info["Resolution"] = (display.w, display.h)
 			cur_disp_info["Refresh rate"] = display.refresh_rate
 			info["Display {}".format(dispnum)] = cur_disp_info
-			
-		
+
+
 		return info
 
 	def get_available_display_drivers(self):
@@ -105,7 +105,7 @@ Displays:
 		return drivers
 
 
-def create_window(resolution,title="SDL2 Display Window", fullscreen=False):
+def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 	global current_sdl2_environment
 	if type(resolution) != tuple and len(resolution) != 2:
 		raise TypeError("Please make sure the resolution variable is a tuple with (width,height)")
@@ -115,7 +115,7 @@ def create_window(resolution,title="SDL2 Display Window", fullscreen=False):
 	flags = None
 	if fullscreen:
 		flags = flags|sdl2.SDL_WINDOW_FULLSCREEN
-	
+
 	window = sdl2.ext.Window(title, size=(width, height), flags=flags)
 	window.show()
 
@@ -138,5 +138,12 @@ def destroy_window():
 	current_sdl2_environment = None
 	del(current_sdl2_environment)
 	sdl2.ext.quit()
+
+def create_framebuffer():
+	global current_sdl2_environment
+	if not current_sdl2_environment is None:
+		return LSD.drawing.FrameBuffer(current_sdl2_environment)
+	else:
+		raise EnvironmentError("SDL2 is not initialized yet! Create a window first")
 
 current_sdl2_environment = None

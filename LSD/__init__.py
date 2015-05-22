@@ -13,6 +13,8 @@ from __future__ import unicode_literals
 # SDL2 libraries
 import sdl2.ext
 import LSD.drawing
+import os
+import sys
 
 __version__ = '1.0'
 __author__ = 'Daniel Schreij'
@@ -110,12 +112,23 @@ def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 	if type(resolution) != tuple and len(resolution) != 2:
 		raise TypeError("Please make sure the resolution variable is a tuple with (width,height)")
 	(width,height) = resolution
-	sdl2.ext.init()
+	
+	try:
+		sdl2.ext.init()
+	except sdl2.ext.SDLError:
+		# On windows, there is the strange error that sdl looks for "directx" as videodriver
+		# although this is often internally specified as "windows". If this occurs, give sdl2 a 
+		# nudge in the right direction by picking the first detected available video driver.
+		if os.name == "nt":
+			sys.stdout.write("Invalid video driver specified. Trying '{0}'... ".format(sdl2.video.SDL_GetVideoDriver(0)))
+			os.environ["SDL_VIDEODRIVER"] = sdl2.video.SDL_GetVideoDriver(0)
+			sdl2.ext.init()
+			print("Success!")
 
 	flags = None
 	if fullscreen:
 		flags = flags|sdl2.SDL_WINDOW_FULLSCREEN
-
+	
 	window = sdl2.ext.Window(title, size=(width, height), flags=flags)
 	window.show()
 

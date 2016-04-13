@@ -135,10 +135,10 @@ class FrameBuffer(object):
 			#Outer circle
 			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r+penwidth, color.r, color.g, color.b, int(opacity*255))
 			#Inner circle
-#			print(sdl2.SDL_SetTextureBlendMode(self.surface.texture, sdl2.SDL_BLENDMODE_NONE)) 			
-#			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r, 255, 255, 255, 100)
-#			print(sdl2.SDL_SetTextureBlendMode(self.surface.texture, sdl2.SDL_BLENDMODE_BLEND))			
-			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r, self.__bgcolor.r, self.__bgcolor.g, self.__bgcolor.b, 255)
+			print(sdl2.SDL_SetTextureBlendMode(self.surface.texture, sdl2.SDL_BLENDMODE_NONE)) 			
+			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r, 255, 255, 255, 0)
+			print(sdl2.SDL_SetTextureBlendMode(self.surface.texture, sdl2.SDL_BLENDMODE_BLEND))			
+#			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r, self.__bgcolor.r, self.__bgcolor.g, self.__bgcolor.b, 255)
 			if aa:
 				for r in range(start_r+penwidth-1, start_r+penwidth+1):
 					sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))

@@ -13,7 +13,7 @@ from math import pi, cos, sin
 
 c = LSD.create_window((1024,768))
 
-print c
+print(c)
 
 fb = FrameBuffer(c, background_color="#222222")
 

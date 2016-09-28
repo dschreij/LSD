@@ -20,7 +20,7 @@ from math import pi, cos, sin
 
 c = LSD.create_window((1024,768))
 
-print c
+print(c)
 
 r = 100
 fb = FrameBuffer(c, background_color="#222222")
@@ -34,9 +34,9 @@ fb.draw_line(xc1-half_ll, yc-half_ll, xc1+half_ll, yc+half_ll, "#FFFFFF", width=
 fb.draw_line(xc2+half_ll, yc-half_ll, xc2-half_ll, yc+half_ll, "#FFFFFF", width=15)
 
 # Anti aliased circle
-fb.draw_circle(xc1, yc, r, color="#FFFF00", fill=False, aa=True, penwidth=15)
+fb.draw_circle_alt(xc1, yc, r, color="#FFFF00", fill=False, aa=True, penwidth=15)
 # Non AA circle
-fb.draw_circle(xc2, yc, r, color="#00FFFF", fill=False, aa=False, penwidth=15)
+fb.draw_circle_alt(xc2, yc, r, color="#00FFFF", fill=False, aa=False, penwidth=15)
 fb.show()
 
 processor = sdl2.ext.TestEventProcessor()

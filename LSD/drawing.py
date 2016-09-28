@@ -61,6 +61,23 @@ class FrameBuffer(object):
 			return result
 		return wrapped
 
+	def opacity(self, value):
+		""" Convert float values to opacity range between 0 and 255. """
+		if type(value) == float and 0.0 <= value <= 1.0:
+			# This is maybe a bit iffy, because it does not allow opacity values
+			# in the 0 to 255 range, between 0 and 1 (it maybe undesiredly converts
+			# it to value*255). T
+			# TODO: Think about a solution for this
+			return int(value*255)
+		elif type(value) in [int, float]:
+			if 0 < value < 255:
+				return int(value)
+			else:
+				raise ValueError("Invalid opacity value")
+		else:
+			raise TypeError("Incorrect type or value passed for opacity.")
+
+
 	@to_texture
 	def clear(self, color=None):
 		if color is None:
@@ -75,8 +92,9 @@ class FrameBuffer(object):
 		x = int(x)
 		y = int(y)
 		r = int(r)
-		
+
 		color = sdl2.ext.convert_to_color(color)
+		opacity = self.opacity(opacity)
 
 		if penwidth != 1:
 			if penwidth < 1:
@@ -86,21 +104,25 @@ class FrameBuffer(object):
 			start_r = r - int(penwidth/2)
 			if start_r < 1:
 				raise ValueError("Penwidth to large for a circle with this radius")
-			r_s = range(start_r,start_r+penwidth)
+			r_s = range(start_r, start_r+penwidth)
 		else:
 			r_s = [r]
 
 		if fill:
-			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, opacity)
 		elif aa:
 			for r in r_s:
 				if r == r_s[0] or r == r_s[-1]:
-					sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+					sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, opacity)
 				else:
-					sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+					sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, opacity)
 		else:
-			for r in r_s:
-				sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
+			for i, r in enumerate(r_s):
+				sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, opacity)
+				if i > 0:
+					sdlgfx.circleRGBA(self.sdl_renderer, x, y, r-.5, color.r, color.g, color.b, opacity)
+					sdlgfx.circleRGBA(self.sdl_renderer, x, y, r+.5, color.r, color.g, color.b, opacity)
+
 		return self
 
 	@to_texture

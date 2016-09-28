@@ -9,11 +9,10 @@ import LSD
 import sdl2.ext
 from LSD.drawing import FrameBuffer
 from random import randint
-import sys
 
 c = LSD.create_window((800,600))
 
-print c
+print(c)
 
 fb = FrameBuffer(c)
 fb2 = FrameBuffer(c)

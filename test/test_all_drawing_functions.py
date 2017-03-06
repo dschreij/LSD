@@ -4,6 +4,9 @@ Created on Wed May  6 22:52:13 2015
 
 @author: daniel
 """
+# Make sure LSD from parent folder is imported
+import sys
+sys.path.insert(0,'..')
 
 import LSD
 import sdl2.ext
@@ -96,7 +99,7 @@ vy = [sin((2*pi/points)*i)*r+row4 for i in range(0,points)]
 fb.draw_polygon(vx, vy, color=randint(0, 0xFFFFFFFF), fill=True, aa=True)
 
 # Textured polygon (Needs sdl2_gfx > 1.0.1 to work correctly)
-RESOURCES = sdl2.ext.Resources(__file__, "LSD/resources")
+RESOURCES = sdl2.ext.Resources(__file__, "resources")
 x += 100
 vx = [cos((2*pi/points)*i)*r+x for i in range(0,points)]
 vy = [sin((2*pi/points)*i)*r+row4 for i in range(0,points)]

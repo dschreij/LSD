@@ -4,6 +4,9 @@ Created on Sun May  3 21:55:19 2015
 
 @author: daniel
 """
+# Make sure LSD from parent folder is imported
+import sys
+sys.path.insert(0,'..')
 
 import LSD
 import sdl2.ext

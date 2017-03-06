@@ -45,39 +45,33 @@ class SDL2Environment(object):
 				self.displays.append(dispinfo)
 
 		self.display_drivers = [sdl2.video.SDL_GetVideoDriver(i) for i in range(sdl2.video.SDL_GetNumVideoDrivers())]
-		self.display_driver = sdl2.SDL_GetCurrentVideoDriver()
+		self.current_display_driver = sdl2.SDL_GetCurrentVideoDriver()
 
 	def __str__(self):
-		infostring = """
-SDL2 environment information
-
-General:
-	LSD version {}
-	PySDL2 version: {}
-	SDL2 version: {}
-	CPU count: {}
-
-Displays:
-	Available display drivers: {}
-	Current display driver: {}
-	Number of displays detected: {}
-		""".format(
-			__version__,
-			self.pysdl2_version,
-			self.sdl2_version,
-			self.cpu_count,
-			self.display_drivers,
-			self.display_driver,
-			self.display_count
-		)
+		infostring = (""
+		"SDL2 environment information\n"
+		"\n"
+		"General:\n"
+		"	LSD version {}\n".format(__version__) +
+		"	PySDL2 version: {}\n".format(self.pysdl2_version) +
+		"	SDL2 version: {}\n".format(self.sdl2_version) +
+		"	CPU count: {}\n".format(self.cpu_count) +
+		"\n"
+		"Displays:\n"
+		"	Available display drivers: {}\n".format(self.display_drivers) +
+		"	Current display driver: {}\n".format(self.current_display_driver) +
+		"	Number of displays detected: {}\n\n".format(self.display_count))
 
 		for dispnum, display in enumerate(self.displays):
-			infostring += """
-	Display {}:
-		Resolution: ({},{})
-		Refresh rate: {} fps
-			""".format(dispnum, display.w, display.h, display.refresh_rate)
+			infostring += (""
+			"	Display {}:\n".format(dispnum) +
+			"		Resolution: ({},{})\n".format(display.w, display.h) +
+			"		Refresh rate: {} fps\n\n".format(display.refresh_rate))
+		
 		return infostring
+
+	def __repr__(self):
+		return self.__str__()
 
 	def info(self):
 		info = {
@@ -96,7 +90,6 @@ Displays:
 			cur_disp_info["Resolution"] = (display.w, display.h)
 			cur_disp_info["Refresh rate"] = display.refresh_rate
 			info["Display {}".format(dispnum)] = cur_disp_info
-
 
 		return info
 
@@ -141,7 +134,9 @@ def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 	# Create sprite factory to create surfaces with later
 	surface_factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
 
-	sdl2env = SDL2Environment(window,resolution,renderer, texture_factory, surface_factory)
+	# Create an environment object that contains all necessary objects, functions
+	# and other information to work with the window interface.
+	sdl2env = SDL2Environment(window, resolution, renderer, texture_factory, surface_factory)
 	current_sdl2_environment= sdl2env
 	window.refresh()
 	return sdl2env

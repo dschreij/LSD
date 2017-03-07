@@ -118,15 +118,16 @@ def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 			sdl2.ext.init()
 			print("Success!")
 
-	flags = None
+	windowflags = None
 	if fullscreen:
-		flags = flags|sdl2.SDL_WINDOW_FULLSCREEN
+		windowflags = windowflags|sdl2.SDL_WINDOW_FULLSCREEN
 	
-	window = sdl2.ext.Window(title, size=(width, height), flags=flags)
+	window = sdl2.ext.Window(title, size=(width, height), flags=windowflags)
 	window.show()
 
 	# Create a render system that renders to the window surface
-	renderer = sdl2.ext.Renderer(window)
+	rendererflags = sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_PRESENTVSYNC | sdl2.SDL_RENDERER_TARGETTEXTURE
+	renderer = sdl2.ext.Renderer(window, flags=rendererflags)
 	renderer.clear(0)
 	renderer.present()
 	# Create sprite factory to create textures with later

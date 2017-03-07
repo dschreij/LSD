@@ -52,7 +52,7 @@ fb.draw_line(400, row2+10, 480, row2+70, color=randint(0, 0xFFFFFFFF), aa=True, 
 fb.draw_line(500, row2+10, 580, row2+70, color=randint(0, 0xFFFFFFFF), aa=True, width=5)
 
 # Text
-fb.draw_text(600, row2, "Test 1 2 3", color=randint(0, 0xFFFFFFFF) )
+fb.draw_text(600, row2, u"Tést 1 2 3", color=randint(0, 0xFFFFFFFF) )
 
 # Arc
 start = randint(0,90)

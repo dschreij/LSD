@@ -31,7 +31,7 @@ class FrameBuffer(object):
 			raise TypeError("ERROR: context argument should be of type LSD.SDL2Environment")
 		self.environment = environment
 		self.surface = environment.texture_factory.create_sprite(
-			size=environment.resolution, 
+			size=environment.resolution,
 			access=sdl2.SDL_TEXTUREACCESS_TARGET
 		)
 
@@ -39,13 +39,12 @@ class FrameBuffer(object):
 		self.renderer = environment.renderer
 		# Low-level SDL renderer (needs to be passed to all sdlgfx functions)
 		self.sdl_renderer = self.renderer.sdlrenderer
-		
+
 		# Renderer for images (sprites) as textures
 		self.spriterenderer = environment.texture_factory.create_sprite_render_system()
 
 		# Renderer for images (sprites) as surfaces (software mode)
-		self.background_color = background_color
-		self.__bgcolor = sdl2.ext.convert_to_color(background_color)
+		self.background_color = sdl2.ext.convert_to_color(background_color)
 		self.clear()
 
 		# Add this buffer to the list of active framebuffers in the environment
@@ -55,15 +54,15 @@ class FrameBuffer(object):
 	def to_texture(drawing_function):
 		@wraps(drawing_function)
 		def wrapped(inst, *args, **kwargs):
-			tex_set = sdl2.SDL_SetRenderTarget(inst.sdl_renderer, inst.surface.texture)
-			if tex_set != 0:
-				raise Exception("Could not set FrameBuffers texture as rendering target")
+			if sdl2.SDL_SetRenderTarget(inst.sdl_renderer, inst.surface.texture) != 0:
+				raise Exception("Could not set FrameBuffers texture as rendering"
+					" target: {}".format(sdl2.SDL_GetError()))
 			# Perform the drawing operation
 			result = drawing_function(inst, *args, **kwargs)
 			# Unset the texture as render target
-			tex_unset = sdl2.SDL_SetRenderTarget(inst.sdl_renderer, None)
-			if tex_unset != 0:
-				raise Exception("Could not release FrameBuffers texture as rendering target")
+			if sdl2.SDL_SetRenderTarget(inst.sdl_renderer, None) != 0:
+				raise Exception("Could not unset FrameBuffers texture as rendering"
+					" target: {}".format(sdl2.SDL_GetError()))
 			return result
 		return wrapped
 
@@ -71,18 +70,65 @@ class FrameBuffer(object):
 		""" Convert float values to opacity range between 0 and 255. """
 		if type(value) == float and 0.0 <= value <= 1.0:
 			# This is maybe a bit iffy, because it does not allow opacity values
-			# in the 0 to 255 range, between 0 and 1 (it maybe undesiredly converts
-			# it to value*255). T
+			# in the 0 to 255 range between 0 and 1 (it maybe undesiredly converts
+			# it to value*255).
 			# TODO: Think about a solution for this
 			return int(value*255)
 		elif type(value) in [int, float]:
-			if 0 < value < 255:
+			if 0 <= value <= 255:
 				return int(value)
 			else:
 				raise ValueError("Invalid opacity value")
 		else:
 			raise TypeError("Incorrect type or value passed for opacity.")
 
+	def determine_optimal_colorkey(self, drawing_color, dev_offset=5):
+		""" Determines the optimal color to use for the transparent color key.
+		
+		It bases the decision on the supplied foreground and background color. The used
+		algorithm is very simple and may be up for improvement. The function simply
+		checks if the foreground color is not identical to the Framebuffer's
+		background color (which me be the case if one wants to draw Kanizsa figures)
+		If it is not, it uses the FrameBuffers background color as the transparent
+		color key. If the colors are identical, it slightly manipulates the background
+		color to a different value (offsetting the color by `dev_offset`)
+
+		Parameters
+		----------
+		drawing_color: sdl2.ext.Color
+			The foreground color in which the shape will be drawn
+		dev_offset: int, optional
+			The value with which to vary the background color if it is identical
+			to the foreground color. The resulting color will be
+
+			    background_color +/- dev_offset
+
+			where dev_offset will be substracted if background_color is white and
+			otherwise it will be added.
+
+		Returns
+		-------
+		sdl2.ext.Color: the optimal colorkey value
+		"""
+
+		# If foreground and background colors are not identical, simply return
+		# the background color
+		if drawing_color != self.background_color:
+			return self.background_color
+
+		if not 1 <= dev_offset <= 25:
+			raise ValueError("dev_offset should be a value between 1 and 25")
+
+		# Create offset_color
+		offset_color = sdl2.ext.Color(dev_offset, dev_offset, dev_offset, 0)
+		# Create white_color
+		white = sdl2.ext.Color(255,255,255,255)
+
+		color_key = self.background_color + offset_color
+		if color_key != white:
+			return color_key
+		else:
+			return self.background_color - offset_color
 
 	@to_texture
 	def clear(self, color=None):
@@ -95,25 +141,25 @@ class FrameBuffer(object):
 	@to_texture
 	def draw_circle(self, x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1):
 		# Make sure all spatial parameters are ints
-		x = int(x)
-		y = int(y)
-		r = int(r)
+		x, y, r = int(x), int(y), int(r)
 
+		# convert color parameter to sdl2 understandable values
 		color = sdl2.ext.convert_to_color(color)
+		# convert possible opacity values to the right scale
 		opacity = self.opacity(opacity)
 
+		# Check for invalid penwidth values, and make sure the value is an int
 		if penwidth != 1:
 			if penwidth < 1:
 				raise ValueError("Penwidth cannot be smaller than 1")
 			if penwidth > 1:
 				penwidth = int(penwidth)
 
+		# if only a filled circle needs to be drawn, it's easy
 		if fill:
 			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, opacity)
 		else:
-			# Create an extra texture to draw the circle on first. This is neccessary
-			# to enable transparency of the circle's interior
-
+			# If penwidth is 1, simply use sdl2gfx's own functions
 			if penwidth == 1:
 				if aa:
 			 		sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, opacity)
@@ -123,102 +169,89 @@ class FrameBuffer(object):
 				# If the penwidth is larger than 1, things become a bit more complex.
 				# To ensure that the interior of the circle is transparent, we will
 				# have to work with multiple textures and blending.
-				outer_r = int(r+penwidth*.5)
-				
-				(c_width, c_height) = (outer_r*2+1, outer_r*2+1)
+				outer_r, inner_r = int(r+penwidth*.5), int(r-penwidth*.5)
 
-				circle_texture = self.environment.texture_factory.create_sprite(
-					size=(c_width, c_height), 
-					access=sdl2.SDL_TEXTUREACCESS_TARGET
+				# Calculate the required dimensions of the extra texture we are
+				# going to draw the circle on. Add 1 pixel to account for division
+				# errors (i.e. dividing an odd number of pixels)
+				c_width, c_height = outer_r*2+1, outer_r*2+1
+
+				# Create the circle texture, and make sure it can be a rendering
+				# target by setting the correct access flag.
+				circle_sprite = self.environment.texture_factory.create_software_sprite(
+					size=(c_width, c_height),
+				)
+				# Create a renderer to draw to the circle sprite
+				sprite_renderer = sdl2.ext.Renderer(circle_sprite)
+
+				# Determine the optimal color key to use for this operation
+				colorkey_color = self.determine_optimal_colorkey(color, self.background_color)
+				
+				# Clear the sprite with the colorkey color
+				sprite_renderer.clear(colorkey_color)
+
+				# Draw the annulus:
+				sdlgfx.filledCircleRGBA(sprite_renderer.sdlrenderer, outer_r, outer_r,
+					outer_r, color.r, color.g, color.b, 255)
+				# Antialias if desired
+				if aa:
+					for i in range(-1,1):
+						for j in range(2):
+							sdlgfx.aacircleRGBA(sprite_renderer.sdlrenderer, outer_r,
+								outer_r, outer_r+i, color.r, color.g, color.b, 255)
+						
+				# Draw the hole
+				sdlgfx.filledCircleRGBA(sprite_renderer.sdlrenderer, outer_r, outer_r,
+					inner_r, colorkey_color.r, colorkey_color.g, colorkey_color.b, 255)
+				# Antialias if desired
+				if aa:
+					for i in range(0,2):
+						for j in range(2):
+							sdlgfx.aacircleRGBA(sprite_renderer.sdlrenderer, outer_r,
+								outer_r, inner_r+i, color.r, color.g, color.b, 255)
+
+				# Optimize drawing of transparent pixels
+				sdl2.SDL_SetSurfaceRLE(circle_sprite.surface, 1)
+
+				# Convert the colorkey to a format understandable by the 
+				# SDL_SetColorKey function
+				colorkey = sdl2.SDL_MapRGB(circle_sprite.surface.format, 
+					colorkey_color.r, colorkey_color.g, colorkey_color.b)
+
+				# Set transparency color key
+				sdl2.SDL_SetColorKey(circle_sprite.surface, sdl2.SDL_TRUE, colorkey)
+
+				# Create a texture from the circle sprite
+				circle_texture = self.environment.texture_factory.from_surface(
+					circle_sprite.surface
 				)
 
-				# Set render target to texture on which the circle will be drawn
-				tex_set = sdl2.SDL_SetRenderTarget(self.sdl_renderer, circle_texture.texture)
+				# Set the desired transparency value to the texture
+				sdl2.SDL_SetTextureAlphaMod(circle_texture.texture, opacity)
 
-				sdl2.SDL_SetRenderDrawBlendMode(self.sdl_renderer, sdl2.SDL_BLENDMODE_BLEND)
-				sdl2.SDL_SetTextureBlendMode(circle_texture.texture, sdl2.SDL_BLENDMODE_BLEND)
-
-				sdlgfx.filledCircleRGBA(self.sdl_renderer, outer_r, outer_r, 
-					outer_r, color.r, color.g, color.b, opacity)
-				if aa:
-					sdlgfx.aacircleRGBA(self.sdl_renderer, outer_r, 
-						outer_r, outer_r, color.r, color.g, color.b, opacity)
-					sdlgfx.aacircleRGBA(self.sdl_renderer, outer_r, 
-						outer_r, outer_r-1, color.r, color.g, color.b, opacity)
-				
-				# Reset blendmode of renderer to what it was before
-				sdl2.SDL_SetRenderDrawBlendMode(self.sdl_renderer, sdl2.SDL_BLENDMODE_NONE)
-				
-				# Reset render target back to the FrameBuffer texture
-				tex_set = sdl2.SDL_SetRenderTarget(self.sdl_renderer, self.surface.texture)
-
-				self.renderer.copy( circle_texture, dstrect=(x-int(c_width/2), 
+				# Perform the blitting operation
+				self.renderer.copy( circle_texture, dstrect=(x-int(c_width/2),
 					y-int(c_height/2), c_width, c_height) )
-				# if aa:
-				# 	sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, opacity)
-				# else:
-				# 	sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, opacity)
-				# else:
-				# 	# for i, r in enumerate(r_s):
-				# 	sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, opacity)
-				# 	if r > 0:
-				# 		sdlgfx.circleRGBA(self.sdl_renderer, x, y, int(r-.5), color.r, color.g, color.b, opacity)
-				# 		sdlgfx.circleRGBA(self.sdl_renderer, x, y, int(r+.5), color.r, color.g, color.b, opacity)
 
+				# Cleanup
+				del(circle_sprite)
+				del(sprite_renderer)
+			
 		return self
 
 	@to_texture
-	def draw_circle_alt(self, x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1):
+	def draw_ellipse(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False, 
+		penwidth=1, rotation=0, center=True):
 		# Make sure all spatial parameters are ints
-		x = int(x)
-		y = int(y)
-		r = int(r)
-		
-		color = sdl2.ext.convert_to_color(color)
-		if penwidth != 1:
-			if penwidth < 1:
-				raise ValueError("Penwidth cannot be smaller than 1")
-			if penwidth > 1:
-				penwidth = int(penwidth)
-			start_r = r - int(penwidth/2)
-			if start_r < 1:
-				raise ValueError("Penwidth to large for a circle with this radius")
+		x, y, rx, ry = int(x), int(y), int(rx), int(ry)
 
-		if fill:
-			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
-			if aa:
-				sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
-				sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r-1, color.r, color.g, color.b, int(opacity*255))
-				sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r+1, color.r, color.g, color.b, int(opacity*255))
-		elif penwidth == 1:
-			if aa:
-				sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
-			else:
-				sdlgfx.circleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
-		else:
-			#Outer circle
-			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r+penwidth, color.r, color.g, color.b, int(opacity*255))
-			#Inner circle
-			print(sdl2.SDL_SetTextureBlendMode(self.surface.texture, sdl2.SDL_BLENDMODE_NONE)) 			
-			sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r, 255, 255, 255, 0)
-			print(sdl2.SDL_SetTextureBlendMode(self.surface.texture, sdl2.SDL_BLENDMODE_BLEND))			
-		# sdlgfx.filledCircleRGBA(self.sdl_renderer, x, y, start_r, self.__bgcolor.r, self.__bgcolor.g, self.__bgcolor.b, 255)
-		if aa:
-			for r in range(start_r+penwidth-1, start_r+penwidth+1):
-				sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
-			for r in range(start_r, start_r+2):
-				sdlgfx.aacircleRGBA(self.sdl_renderer, x, y, r, color.r, color.g, color.b, int(opacity*255))
-		return self
+		width, height = 2*(rx+penwidth)+1, 2*(ry+penwidth)+1
 
-	@to_texture
-	def draw_ellipse_alt(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False, penwidth=1):
-		# Make sure all spatial parameters are ints
-		x = int(x)
-		y = int(y)
-		rx = int(rx)
-		ry = int(ry)	
-		
-		color = sdl2.ext.convert_to_color(color)
+		if not center:
+			x, y = int(x - width/2), int(y - height/2)
+
+		color = sdl2.ext.COLOR(color)
+		opacity = self.opacity(opacity)
 
 		if penwidth != 1:
 			if penwidth < 1:
@@ -229,70 +262,86 @@ class FrameBuffer(object):
 			start_ry = ry - int(penwidth/2)
 			if start_rx < 1 or start_ry < 1:
 				raise ValueError("Penwidth to large for a ellipse with this radius")
-			rx_s = range(start_rx,start_rx+penwidth)
-			ry_s = range(start_ry,start_ry+penwidth)
-			r_s = zip(rx_s,ry_s)
-		else:
-			r_s = [(rx,ry)]
 
 		if fill:
-			sdlgfx.filledEllipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
-		elif aa:
-			for rx, ry in r_s:
-				if (rx, ry) == r_s[0] or (rx, ry) == r_s[-1]:
-					sdl2.sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
-				else:
-					sdl2.sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
-		else:
-			for rx, ry in r_s:
-				sdl2.sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
-		return self
-
-	@to_texture
-	def draw_ellipse(self, x, y, rx, ry, color, opacity=1.0, fill=True, aa=False, penwidth=1):
-		# Make sure all spatial parameters are ints
-		x = int(x)
-		y = int(y)
-		rx = int(rx)
-		ry = int(ry)			
-		
-		color = sdl2.ext.convert_to_color(color)
-
-		if penwidth != 1:
-			if penwidth < 1:
-				raise ValueError("Penwidth cannot be smaller than 1")
-			if penwidth > 1:
-				penwidth = int(penwidth)
-			start_x = x-int(penwidth/2)
-			start_y = y-int(penwidth/2)
-			start_rx = rx - int(penwidth/2)
-			start_ry = ry - int(penwidth/2)
-			if start_rx < 1 or start_ry < 1:
-				raise ValueError("Penwidth to large for a ellipse with this radius")
-
-		if fill:
-			sdlgfx.filledEllipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+			sdlgfx.filledEllipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, opacity)
 			if aa:
-				sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
-				sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+				sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, opacity)
+				sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, opacity)
 
 		elif penwidth == 1:
 			if aa:
-				sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+				sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, opacity)
 			else:
-				sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, int(opacity*255))
+				sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, opacity)
 		else:
-			#Outer circle
-			sdlgfx.filledEllipseRGBA(self.sdl_renderer, start_x, start_y, start_rx+penwidth, start_ry+penwidth, color.r, color.g, color.b, int(opacity*255))
-			#Inner circle
-			sdlgfx.filledEllipseRGBA(self.sdl_renderer, start_x, start_y, start_rx, start_ry, self.__bgcolor.r, self.__bgcolor.g, self.__bgcolor.b, 255)
+			# Create the circle texture, and make sure it can be a rendering
+			# target by setting the correct access flag.
+			ellipse_sprite = self.environment.texture_factory.create_software_sprite(
+				size=(width, height),
+			)
+			# Create a renderer to draw to the circle sprite
+			sprite_renderer = sdl2.ext.Renderer(ellipse_sprite)
+
+			# Determine the optimal color key to use for this operation
+			colorkey_color = self.determine_optimal_colorkey(color, self.background_color)
+			
+			# Clear the sprite with the colorkey color
+			sprite_renderer.clear(colorkey_color)
+
+			# Annulus
+			sdlgfx.filledEllipseRGBA(sprite_renderer.sdlrenderer, rx+penwidth, ry+penwidth, 
+				rx+int(penwidth/2), ry+int(penwidth/2), color.r, color.g, color.b, 255)
+			
+			# Hole
+			sdlgfx.filledEllipseRGBA(sprite_renderer.sdlrenderer, rx+penwidth, ry+penwidth, 
+				rx-int(penwidth/2), ry-int(penwidth/2), colorkey_color.r, 
+				colorkey_color.g, colorkey_color.b, 255)
+			
 			if aa:
-				# Outer circle
-				sdlgfx.ellipseRGBA(self.sdl_renderer, start_x, start_y, start_rx+penwidth, start_ry+penwidth, color.r, color.g, color.b, int(opacity*255))
-				sdlgfx.aaellipseRGBA(self.sdl_renderer, start_x, start_y, start_rx+penwidth, start_ry+penwidth, color.r, color.g, color.b, int(opacity*255))
-				# Inner circle
-				sdlgfx.aaellipseRGBA(self.sdl_renderer, start_x, start_y, start_rx, start_ry, color.r, color.g, color.b, int(opacity*255))
-				sdlgfx.aaellipseRGBA(self.sdl_renderer, start_x, start_y, start_rx, start_ry-1, color.r, color.g, color.b, int(opacity*255))
+				# Annulus
+				for i in range(-1,1):
+					for j in range(2):
+						sdlgfx.aaellipseRGBA(sprite_renderer.sdlrenderer, rx+penwidth, 
+							ry+penwidth, rx+int(penwidth/2)+i, ry+int(penwidth/2)+i, 
+							color.r, color.g, color.b, opacity)
+				
+				# Hole
+				for i in range(0,2):
+					for j in range(2):
+						sdlgfx.aaellipseRGBA(sprite_renderer.sdlrenderer, rx+penwidth, 
+							ry+penwidth, rx-int(penwidth/2)+i, ry-int(penwidth/2)+i, 
+							color.r, color.g, color.b, opacity)
+			
+			# Optimize drawing of transparent pixels
+			sdl2.SDL_SetSurfaceRLE(ellipse_sprite.surface, 1)
+
+			# Convert the colorkey to a format understandable by the 
+			# SDL_SetColorKey function
+			colorkey = sdl2.SDL_MapRGB(ellipse_sprite.surface.format, 
+				colorkey_color.r, colorkey_color.g, colorkey_color.b)
+
+			# Set transparency color key
+			sdl2.SDL_SetColorKey(ellipse_sprite.surface, sdl2.SDL_TRUE, colorkey)
+
+			# Create a texture from the circle sprite
+			ellipse_tex = self.environment.texture_factory.from_surface(
+				ellipse_sprite.surface
+			)
+
+			# Set the desired transparency value to the texture
+			sdl2.SDL_SetTextureAlphaMod(ellipse_tex.texture, opacity)
+
+			# Perform the blitting operation
+			if center:
+				x, y = int(x - width/2), int(y - height/2)
+			self.renderer.copy( ellipse_tex, dstrect=(x, y, width, height), 
+				angle=rotation )
+
+			# Cleanup
+			del(ellipse_sprite)
+			del(sprite_renderer)
+
 		return self
 
 	@to_texture
@@ -301,8 +350,8 @@ class FrameBuffer(object):
 		x = int(x)
 		y = int(y)
 		w = int(w)
-		h = int(h)					
-		
+		h = int(h)
+
 		color = sdl2.ext.convert_to_color(color)
 
 		if penwidth != 1:
@@ -328,15 +377,19 @@ class FrameBuffer(object):
 
 		if fill:
 			if border_radius > 0:
-				sdl2.sdlgfx.roundedBoxRGBA(self.sdl_renderer, x, y, x+w, y+h, border_radius, color.r, color.g, color.b, int(opacity*255))
+				sdl2.sdlgfx.roundedBoxRGBA(self.sdl_renderer, x, y, x+w, y+h, 
+					border_radius, color.r, color.g, color.b, int(opacity*255))
 			else:
-				sdl2.sdlgfx.boxRGBA(self.sdl_renderer, x, y, x+w, y+h, color.r, color.g, color.b, int(opacity*255))
+				sdl2.sdlgfx.boxRGBA(self.sdl_renderer, x, y, x+w, y+h, color.r, 
+					color.g, color.b, int(opacity*255))
 		else:
 			for x,y,w,h in rects:
 				if border_radius > 0:
-					sdl2.sdlgfx.roundedRectangleRGBA(self.sdl_renderer, x, y, x+w, y+h, border_radius, color.r, color.g, color.b, int(opacity*255))
+					sdl2.sdlgfx.roundedRectangleRGBA(self.sdl_renderer, x, y, 
+						x+w, y+h, border_radius, color.r, color.g, color.b, int(opacity*255))
 				else:
-					sdl2.sdlgfx.rectangleRGBA(self.sdl_renderer, x, y, x+w, y+h, color.r, color.g, color.b, int(opacity*255))
+					sdl2.sdlgfx.rectangleRGBA(self.sdl_renderer, x, y, x+w, y+h, 
+						color.r, color.g, color.b, int(opacity*255))
 		return self
 
 
@@ -346,27 +399,33 @@ class FrameBuffer(object):
 		x1 = int(x1)
 		y1 = int(y1)
 		x2 = int(x2)
-		y2 = int(y2)		
-		
+		y2 = int(y2)
+
 		color = sdl2.ext.convert_to_color(color)
 		if width < 1:
 			raise ValueError("Line width cannot be smaller than 1px")
 
 		if width > 1:
-			return sdl2.sdlgfx.thickLineRGBA(self.sdl_renderer, x1, y1, x2, y2, width, color.r, color.g, color.b, int(opacity*255))
+			return sdl2.sdlgfx.thickLineRGBA(self.sdl_renderer, x1, y1, x2, y2, 
+				width, color.r, color.g, color.b, int(opacity*255))
 		if not aa:
-			return sdl2.sdlgfx.lineRGBA(self.sdl_renderer, x1, y1, x2, y2, color.r, color.g, color.b, int(opacity*255))
+			return sdl2.sdlgfx.lineRGBA(self.sdl_renderer, x1, y1, x2, y2, 
+				color.r, color.g, color.b, int(opacity*255))
 		else:
-			return sdl2.sdlgfx.aalineRGBA(self.sdl_renderer, x1, y1, x2, y2, color.r, color.g, color.b, int(opacity*255))
+			return sdl2.sdlgfx.aalineRGBA(self.sdl_renderer, x1, y1, x2, y2, 
+				color.r, color.g, color.b, int(opacity*255))
 
 	@to_texture
 	def draw_text(self, x, y, text, color, opacity=1.0):
 		# Make sure all spatial parameters are ints
-		x = int(x)
-		y = int(y)
+		x,y = int(x), int(y)
+
+		# Make sure the passed text is of type 'bytes'
+		text = sdl2.ext.compat.byteify(text, 'utf8')
+		print(text)
 
 		color = sdl2.ext.convert_to_color(color)
-		sdl2.sdlgfx.stringRGBA(self.sdl_renderer, x, y, text, color.r, color.g, color.b, int(opacity*255))
+		sdl2.sdlgfx.stringRGBA(self.sdl_renderer, x, y, text, color.r, color.g, color.b, self.opacity(opacity))
 		return self
 
 	@to_texture
@@ -375,7 +434,7 @@ class FrameBuffer(object):
 		x = int(x)
 		y = int(y)
 		r = int(r)
-		
+
 		color = sdl2.ext.convert_to_color(color)
 		if penwidth != 1:
 			if penwidth < 1:
@@ -400,7 +459,7 @@ class FrameBuffer(object):
 		x = int(x)
 		y = int(y)
 		r = int(r)
-		
+
 		color = sdl2.ext.convert_to_color(color)
 		if fill:
 			return sdl2.sdlgfx.filledPieRGBA(self.sdl_renderer, x, y, r, start, end, color.r, color.g, color.b, int(opacity*255))
@@ -417,7 +476,7 @@ class FrameBuffer(object):
 		y2 = int(y2)
 		x3 = int(x3)
 		y3 = int(y3)
-		
+
 		color = sdl2.ext.convert_to_color(color)
 		if fill:
 			return sdl2.sdlgfx.filledTrigonRGBA(self.sdl_renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, int(opacity*255))
@@ -480,7 +539,7 @@ class FrameBuffer(object):
 	def draw_image(self, x, y, image_path):
 		x = int(x)
 		y = int(y)
-		
+
 		image = self.environment.texture_factory.from_image(image_path)
 		image.position = (x,y)
 		self.spriterenderer.render(image)
@@ -495,6 +554,7 @@ class FrameBuffer(object):
 		return (time.time(), drawing_delay)
 
 	def __del__(self):
+		sdl2.SDL_DestroyTexture(self.surface.texture)
 		del([self.renderer, self.surface, self.sdl_renderer, self.spriterenderer])
 		# Remove this buffer from lists of active buffers in environment!
 

@@ -79,9 +79,9 @@ class SDL2Environment(object):
 			"PySDL2 version":self.pysdl2_version,
 			"SDL2 version":self.sdl2_version,
 			"CPU count":self.cpu_count,
-			"Current display driver":self.display_driver,
+			"Current display driver":self.current_display_driver,
 			"Display count":self.display_count,
-			"Window dimensions":self.resolution,
+			"Window dimensions":self.window.size,
 			"Available display drivers":self.display_drivers,
 		}
 
@@ -104,7 +104,7 @@ def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 	global current_sdl2_environment
 	if type(resolution) != tuple and len(resolution) != 2:
 		raise TypeError("Please make sure the resolution variable is a tuple with (width,height)")
-	(width,height) = resolution
+	(width, height) = resolution
 	
 	try:
 		sdl2.ext.init()
@@ -118,11 +118,18 @@ def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 			sdl2.ext.init()
 			print("Success!")
 
-	windowflags = None
+	windowflags = 0
 	if fullscreen:
 		windowflags = windowflags|sdl2.SDL_WINDOW_FULLSCREEN
-	
-	window = sdl2.ext.Window(title, size=(width, height), flags=windowflags)
+
+		dispinfo = sdl2.SDL_DisplayMode()
+		if sdl2.SDL_GetCurrentDisplayMode(0, dispinfo) != 0:
+			raise Exception("Could not get display resolution: {}".format(sdl2.SDL_GetError()))
+		window_size = dispinfo.w, dispinfo.h
+	else:
+		window_size = resolution
+
+	window = sdl2.ext.Window(title, size=window_size, flags=windowflags)
 	window.show()
 
 	# Create a render system that renders to the window surface

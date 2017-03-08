@@ -537,8 +537,7 @@ class FrameBuffer(object):
 
 	@to_texture
 	def draw_image(self, x, y, image_path):
-		x = int(x)
-		y = int(y)
+		x,y = int(x), int(y)
 
 		image = self.environment.texture_factory.from_image(image_path)
 		image.position = (x,y)
@@ -547,8 +546,23 @@ class FrameBuffer(object):
 
 	def show(self):
 		t1 = sdl2.SDL_GetTicks()
+
+		# The destination rectangle on the surface
+		# Only calculate if the drawing frame dimensions are different from the window size
+		if self.environment.resolution == self.environment.window.size:
+			dest_rect = None
+		else:
+			w_w, w_h = self.environment.window.size
+			f_w, f_h = self.environment.resolution
+			w, h = self.environment.resolution
+
+			# Make sure the texture is centered on the screen
+			x = int(w_w/2 - f_w/2)
+			y = int(w_h/2 - f_h/2)
+			dest_rect = (x, y, w, h)
+
 		self.renderer.clear(0)
-		self.renderer.copy(self.surface)
+		self.renderer.copy(self.surface, dstrect=dest_rect)
 		self.renderer.present()
 		drawing_delay = sdl2.SDL_GetTicks() - t1
 		return (time.time(), drawing_delay)

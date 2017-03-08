@@ -20,8 +20,9 @@ import sdl2.ext
 from LSD.drawing import FrameBuffer
 import time
 
-c = LSD.create_window((1024,768))
+c = LSD.create_window((1280,800), title="Test transparent key", fullscreen=False)
 
+# Print the context information
 print(c)
 
 r = 75

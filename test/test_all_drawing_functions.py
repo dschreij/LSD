@@ -5,8 +5,9 @@ Created on Wed May  6 22:52:13 2015
 @author: daniel
 """
 # Make sure LSD from parent folder is imported
+import os
 import sys
-sys.path.insert(0,'..')
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))
 
 import LSD
 import sdl2.ext
@@ -14,7 +15,7 @@ from LSD.drawing import FrameBuffer
 from random import randint
 from math import pi, cos, sin
 
-c = LSD.create_window((1024,768))
+c = LSD.create_window((1024,768), fullscreen=True)
 
 print(c)
 

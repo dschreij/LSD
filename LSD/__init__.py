@@ -12,12 +12,17 @@ from __future__ import unicode_literals
 
 # SDL2 libraries
 import sdl2.ext
-import LSD.drawing
+from . import screen
 import os
 import sys
 
+from functools import wraps
+
 __version__ = '1.0'
 __author__ = 'Daniel Schreij'
+
+# The variable to hold the sdl2environment object
+current_sdl2_environment = None
 
 class SDL2Environment(object):
 
@@ -99,7 +104,6 @@ class SDL2Environment(object):
 			drivers.append(sdl2.SDL_GetVideoDriver(vd))
 		return drivers
 
-
 def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 	global current_sdl2_environment
 	if type(resolution) != tuple and len(resolution) != 2:
@@ -149,17 +153,33 @@ def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 	window.refresh()
 	return sdl2env
 
-def destroy_window():
+def destroy_window(sdl2env=None):
 	global current_sdl2_environment
 	current_sdl2_environment = None
 	del(current_sdl2_environment)
 	sdl2.ext.quit()
 
-def create_framebuffer():
-	global current_sdl2_environment
-	if not current_sdl2_environment is None:
-		return LSD.drawing.FrameBuffer(current_sdl2_environment)
+# Decorator
+def inject_sdl_environment(func):
+	@wraps(func)
+	def wrapped(*args, **kwargs):
+		global current_sdl2_environment
+		if "sdl2env" not in kwargs:
+			kwargs['sdl2env'] = current_sdl2_environment
+		return func(*args, **kwargs)
+	return wrapped
+
+@inject_sdl_environment
+def create_framebuffer(*args, **kwargs):
+	sdl2env = kwargs.get('sdl2env', None)
+	if type(sdl2env) == SDL2Environment:
+		if len(args):
+			return screen.FrameBuffer(*args, **kwargs)
+		else:
+			return screen.FrameBuffer(**kwargs)
 	else:
 		raise EnvironmentError("SDL2 is not initialized yet! Create a window first")
 
-current_sdl2_environment = None
+
+
+

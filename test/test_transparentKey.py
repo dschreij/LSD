@@ -5,12 +5,6 @@ Created on Fri May 22 11:24:53 2015
 @author: Daniel
 """
 
-# -*- coding: utf-8 -*-
-"""
-Created on Wed May  6 22:52:13 2015
-
-@author: daniel
-"""
 # Make sure LSD from parent folder is imported
 import sys, os
 sys.path.insert(0,os.path.join(os.path.dirname(__file__), '..'))

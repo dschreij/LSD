@@ -36,7 +36,7 @@ class SDL2Environment(object):
 		"SDL2 environment information\n"
 		"\n"
 		"General:\n"
-		"	LSD version {}\n".format(self.lsd_version) +
+		"	LSD version: {}\n".format(self.lsd_version) +
 		"	PySDL2 version: {}\n".format(self.pysdl2_version) +
 		"	SDL2 version: {}\n".format(self.sdl2_version) +
 		"	CPU count: {}\n".format(self.cpu_count) +

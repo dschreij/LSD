@@ -33,6 +33,16 @@ def check_common_params(func):
 
 	@wraps(func)
 	def wrapped(*args, **kwargs):
+		# Check if x and y are numeric, if supplied.
+		x = kwargs.get('x', None)
+		y = kwargs.get('y', None)
+		if x: kwargs['x'] = check_int_value(x)
+		if y: kwargs['y'] = check_int_value(y)
+
+		center = kwargs.get('center', None)
+		if center and not bool(center):
+			raise TypeError("Center needs to be a boolean value")
+
 		# Check for invalid penwidth values, and make sure the value is an int
 		penwidth = kwargs.pop('penwidth', None)
 		if penwidth:
@@ -45,11 +55,11 @@ def check_common_params(func):
 		check_sdl2env(kwargs.get('sdl2env', None))
 
 		# convert possible opacity values to the right scale
-		opacity = kwargs.pop('opacity', 1.0)
+		opacity = kwargs.pop('opacity', 255)
 		if opacity:
 			kwargs['opacity'] = convert_opacity(opacity)
 		
-		rotation = kwargs.pop('rotation', 0)
+		rotation = kwargs.pop('rotation', None)
 		if rotation:
 			kwargs['rotation'] = check_int_value(penwidth, varname="Rotation")
 
@@ -61,12 +71,12 @@ def check_common_params(func):
 
 @inject_sdl_environment
 @check_common_params
-def circle(x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1, 
-	rotation_center=None, rotation=0, flip=None, **kwargs):
+def circle(radius, color, x=None, y=None, opacity=1.0, fill=True, aa=False, penwidth=1, 
+	rotation_center=None, rotation=0, flip=None, center=True, **kwargs):
 	# Make sure all spatial parameters are ints
-	x, y = map(check_int_value, (x, y))
+	
 	# Check for invalid r values, and make sure the value is an int
-	r = check_int_value(r, min_value=1, varname="r")
+	r = check_int_value(radius, min_value=1, varname="r")
 	# convert color parameter to sdl2 understandable values
 	color = sdl2.ext.convert_to_color(color)
 	
@@ -111,16 +121,6 @@ def circle(x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1,
 				sdlgfx.circleRGBA(sdlrenderer, r, r, r, color.r, color.g, color.b, 
 					opacity)
 		else:
-			# If the penwidth is larger than 1, things become a bit more complex.
-			# To ensure that the interior of the circle is transparent, we will
-			# have to work with multiple textures and blending.
-			outer_r, inner_r = int(r+penwidth*.5), int(r-penwidth*.5)
-
-			# Calculate the required dimensions of the extra texture we are
-			# going to draw the circle on. Add 1 pixel to account for division
-			# errors (i.e. dividing an odd number of pixels)
-			c_width, c_height = outer_r*2+1, outer_r*2+1
-
 			# Create the circle texture, and make sure it can be a rendering
 			# target by setting the correct access flag.
 			circle_sprite = sdl2env.texture_factory.create_software_sprite(
@@ -188,61 +188,73 @@ def circle(x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1,
 		raise Exception("Could not free circle texture as rendering target: "
 			"{}".format(sdl2.SDL_GetError()))
 
+	# Translate coordinates if circle should be centered
+	if center and x and y:
+		x, y = int(x - c_width/2), int(y - c_height/2) 
+
 	# Set the relevant information in the target texture object
 	target_texture.x = x
 	target_texture.y = y
 	target_texture.opacity = opacity
 	target_texture.center = rotation_center
 	target_texture.angle = rotation
-	# target_texture.flip = flip
+	target_texture.flip = flip
 	return target_texture
 		
-
 @inject_sdl_environment
-def ellipse(x, y, rx, ry, color, opacity=1.0, fill=True, aa=False, 
-	penwidth=1, rotation=0, center=True):
+@check_common_params
+def ellipse(x_radius, y_radius, color, x=0, y=0, opacity=1.0, fill=True, aa=False, 
+	penwidth=1, rotation=0, rotation_center=None, flip=None, center=True, **kwargs):
 	# Make sure all spatial parameters are ints
-	x, y, rx, ry, penwidth = map(int,(x ,y, rx, ry, penwidth))
+	rx = check_int_value(x_radius, min_value=1, varname="x_radius")
+	ry = check_int_value(y_radius, min_value=1, varname="y_radius")
 
-	if penwidth < 1:
-		raise ValueError("Penwidth cannot be smaller than 1")
+	sdl2env = kwargs.get('sdl2env')
+	# alias the sdlrenderer
+	sdlrenderer = sdl2env.renderer.sdlrenderer	
 
 	width, height = 2*(rx+penwidth)+1, 2*(ry+penwidth)+1
 
-	if not center:
-		x, y = int(x - width/2), int(y - height/2)
+	# Create the target texture
+	target_texture = sdl2env.texture_factory.create_sprite(
+		size=(width, height),
+		access=sdl2.SDL_TEXTUREACCESS_TARGET
+	)
 
-	color = sdl2.ext.COLOR(color)
-	opacity = self.opacity(opacity)
+	# Set target texture as render target (from now on sdlrenderer draws on this texture)
+	if sdl2.SDL_SetRenderTarget(sdlrenderer, target_texture.texture) != 0:
+		raise Exception("Could not set circle texture as rendering target: "
+			"{}".format(sdl2.SDL_GetError()))
 
-	if penwidth > 1:
-		start_rx = rx - int(penwidth/2)
-		start_ry = ry - int(penwidth/2)
-		if start_rx < 1 or start_ry < 1:
-			raise ValueError("Penwidth to large for a ellipse with this radius")
+	color = sdl2.ext.convert_to_color(color)
+
+	start_rx = rx - int(penwidth/2)
+	start_ry = ry - int(penwidth/2)
+	if start_rx < 1 or start_ry < 1:
+		raise ValueError("Penwidth to large for a ellipse with this radius")
 
 	if fill:
-		sdlgfx.filledEllipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, opacity)
+		sdlgfx.filledEllipseRGBA(sdlrenderer, rx, ry, rx, ry, color.r, color.g, color.b, opacity)
 		if aa:
-			sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, opacity)
-			sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, opacity)
+			sdlgfx.aaellipseRGBA(sdlrenderer, rx, ry, rx, ry, color.r, color.g, color.b, opacity)
+			sdlgfx.aaellipseRGBA(sdlrenderer, rx, ry, rx-1, ry-1, color.r, color.g, color.b, opacity)
 
 	elif penwidth == 1:
 		if aa:
-			sdlgfx.aaellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, opacity)
+			sdlgfx.aaellipseRGBA(sdlrenderer, rx, ry, rx, ry, color.r, color.g, color.b, opacity)
 		else:
-			sdlgfx.ellipseRGBA(self.sdl_renderer, x, y, rx, ry, color.r, color.g, color.b, opacity)
+			sdlgfx.ellipseRGBA(sdlrenderer, rx, ry, rx, ry, color.r, color.g, color.b, opacity)
 	else:
 		# Create the circle texture, and make sure it can be a rendering
 		# target by setting the correct access flag.
-		ellipse_sprite = self.environment.texture_factory.create_software_sprite(
+		ellipse_sprite = sdl2env.texture_factory.create_software_sprite(
 			size=(width, height),
 		)
 		# Create a renderer to draw to the circle sprite
 		sprite_renderer = sdl2.ext.Renderer(ellipse_sprite)
 
 		# Determine the optimal color key to use for this operation
-		colorkey_color = self.determine_optimal_colorkey(color, self.background_color)
+		colorkey_color = determine_optimal_colorkey(color)
 		
 		# Clear the sprite with the colorkey color
 		sprite_renderer.clear(colorkey_color)
@@ -283,24 +295,37 @@ def ellipse(x, y, rx, ry, color, opacity=1.0, fill=True, aa=False,
 		sdl2.SDL_SetColorKey(ellipse_sprite.surface, sdl2.SDL_TRUE, colorkey)
 
 		# Create a texture from the circle sprite
-		ellipse_tex = self.environment.texture_factory.from_surface(
+		ellipse_tex = sdl2env.texture_factory.from_surface(
 			ellipse_sprite.surface
 		)
 
-		# Set the desired transparency value to the texture
-		sdl2.SDL_SetTextureAlphaMod(ellipse_tex.texture, opacity)
-
-		# Perform the blitting operation
-		if center:
-			x, y = int(x - width/2), int(y - height/2)
-		self.renderer.copy( ellipse_tex, dstrect=(x, y, width, height), 
-			angle=rotation )
+		sdl2env.renderer.copy( ellipse_tex, dstrect=(0, 0, width, height))
 
 		# Cleanup
 		del(ellipse_sprite)
 		del(sprite_renderer)
 
-	return self
+		# Set the desired transparency value to the texture
+	sdl2.SDL_SetTextureAlphaMod(target_texture.texture, opacity)
+	sdl2.SDL_SetTextureBlendMode(target_texture.texture, sdl2.SDL_BLENDMODE_BLEND)
+
+	# Free texture as render target
+	if sdl2.SDL_SetRenderTarget(sdlrenderer, None) != 0:
+		raise Exception("Could not free circle texture as rendering target: "
+			"{}".format(sdl2.SDL_GetError()))
+
+	# Translate coordinates if circle should be centered
+	if center and x and y:
+		x, y = int(x - width/2), int(y - height/2) 
+
+	# Set the relevant information in the target texture object
+	target_texture.x = x
+	target_texture.y = y
+	target_texture.opacity = opacity
+	target_texture.center = rotation_center
+	target_texture.angle = rotation
+	target_texture.flip = flip
+	return target_texture
 
 @inject_sdl_environment
 def rect(x, y, w, h, color, opacity=1.0, fill=True, border_radius=0, penwidth=1):
@@ -332,18 +357,18 @@ def rect(x, y, w, h, color, opacity=1.0, fill=True, border_radius=0, penwidth=1)
 
 	if fill:
 		if border_radius > 0:
-			sdl2.sdlgfx.roundedBoxRGBA(self.sdl_renderer, x, y, x+w, y+h, 
+			sdl2.sdlgfx.roundedBoxRGBA(sdlrenderer, x, y, x+w, y+h, 
 				border_radius, color.r, color.g, color.b, int(opacity*255))
 		else:
-			sdl2.sdlgfx.boxRGBA(self.sdl_renderer, x, y, x+w, y+h, color.r, 
+			sdl2.sdlgfx.boxRGBA(sdlrenderer, x, y, x+w, y+h, color.r, 
 				color.g, color.b, int(opacity*255))
 	else:
 		for x,y,w,h in rects:
 			if border_radius > 0:
-				sdl2.sdlgfx.roundedRectangleRGBA(self.sdl_renderer, x, y, 
+				sdl2.sdlgfx.roundedRectangleRGBA(sdlrenderer, x, y, 
 					x+w, y+h, border_radius, color.r, color.g, color.b, int(opacity*255))
 			else:
-				sdl2.sdlgfx.rectangleRGBA(self.sdl_renderer, x, y, x+w, y+h, 
+				sdl2.sdlgfx.rectangleRGBA(sdlrenderer, x, y, x+w, y+h, 
 					color.r, color.g, color.b, int(opacity*255))
 	return self
 

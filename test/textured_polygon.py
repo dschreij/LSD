@@ -24,7 +24,7 @@ texture_factory = sdl2.ext.SpriteFactory(renderer=renderer)
 surface_factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
 
 # Determine path to image to use as texture
-RESOURCES = sdl2.ext.Resources(__file__, "LSD/resources")
+RESOURCES = sdl2.ext.Resources(__file__, "resources")
 image_path = RESOURCES.get_path("Memory.jpeg")
 
 # set polygon coordinates

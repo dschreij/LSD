@@ -18,112 +18,98 @@ import sdl2
 import sdl2.ext
 from sdl2 import sdlgfx
 
-from . import inject_sdl_environment, SDL2Environment
+# LSD package imports
+from . import inject_sdl_environment
+from .util import *
 
 # misc
-from .util import *
 from functools import wraps
 import ctypes
 import time
 
-# def use_texture(drawing_function):
-# 	""" Decorator function for drawing functions.wraps
+def check_common_params(func):
+	""" Decorator that type and value checks the most common parameters such as
+	penwidth, opacity, rotation, etc. """
 
-# 	This decorator is used to create a texture for the drawing function to draw
-# 	on and sets it as the renderers current target. After the drawing function is
-# 	finished it sets back the renderer to its original
-# 	"""
-# 	@wraps(drawing_function)
-# 	@inject_sdl_environment
-# 	def wrapped(*args, **kwargs):
-		# sdl2env = kwargs.get("sdl2env", None)
-		# if type(sdl2env) != SDL2Environment:
-		# 	raise TypeError("passed sdl2env parameter is not a SDL2Environment object")
+	@wraps(func)
+	def wrapped(*args, **kwargs):
+		# Check for invalid penwidth values, and make sure the value is an int
+		penwidth = kwargs.pop('penwidth', None)
+		if penwidth:
+			kwargs['penwidth'] = check_int_value(penwidth, min_value=1, 
+				varname="Penwidth")
+		
+		# Check if sdl2env is passed (implicitly or explicitly)
+		# This function simply raises an error if an sdl2env object hasn't been
+		# passed.
+		check_sdl2env(kwargs.get('sdl2env', None))
 
-		# target_texture = sdl2env.texture_factory.create_texture_sprite(
-		# 	sdl2env.renderer,
+		# convert possible opacity values to the right scale
+		opacity = kwargs.pop('opacity', 1.0)
+		if opacity:
+			kwargs['opacity'] = convert_opacity(opacity)
+		
+		rotation = kwargs.pop('rotation', 0)
+		if rotation:
+			kwargs['rotation'] = check_int_value(penwidth, varname="Rotation")
 
-		# )
+		# Check for the presence of the flip variable
+		kwargs['flip'] = get_sdl_flip_value(kwargs.pop('flip', None))
 
-# 		if sdl2.SDL_SetRenderTarget(sdl2env.sdl_renderer, inst.surface.texture) != 0:
-# 			raise Exception("Could not set FrameBuffers texture as rendering"
-# 				" target: {}".format(sdl2.SDL_GetError()))
-# 		# Perform the drawing operation
-# 		result = drawing_function(inst, *args, **kwargs)
-# 		# Unset the texture as render target
-# 		if sdl2.SDL_SetRenderTarget(sdl2env.sdl_renderer, None) != 0:
-# 			raise Exception("Could not unset FrameBuffers texture as rendering"
-# 				" target: {}".format(sdl2.SDL_GetError()))
-# 		return result
-# 	return wrapped
+		return func(*args, **kwargs)
+	return wrapped
 
 @inject_sdl_environment
+@check_common_params
 def circle(x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1, 
 	rotation_center=None, rotation=0, flip=None, **kwargs):
 	# Make sure all spatial parameters are ints
-	x, y, r = int(x), int(y), int(r)
-	# Check if sdl2env is passed (implicitly or explicitly)
-	sdl2env = check_sdl2env(kwargs.get("sdl2env", None))
-	sdlrenderer = sdl2env.renderer.sdlrenderer
-
+	x, y = map(check_int_value, (x, y))
+	# Check for invalid r values, and make sure the value is an int
+	r = check_int_value(r, min_value=1, varname="r")
 	# convert color parameter to sdl2 understandable values
 	color = sdl2.ext.convert_to_color(color)
-	# convert possible opacity values to the right scale
-	opacity = convert_opacity(opacity)
-
-	# Check for invalid penwidth values, and make sure the value is an int
-	if type(penwidth) in [int, float]:
-		if penwidth < 1:
-			raise ValueError("Penwidth cannot be smaller than 1")
-		else:
-			penwidth = int(penwidth)
-	else:
-		raise TypeError("Penwidth needs to be int or float")
 	
-	# Check for invalid r values, and make sure the value is an int
-	if type(r) in [int, float]:
-		if r < 1:
-			raise ValueError("r cannot be smaller than 1")
-		else:
-			r = int(r)
-	else:
-		raise TypeError("r needs to be int or float")
-
-	if flip is None:
-		flip = sdl2.SDL_FLIP_NONE
-	elif flip == "horizontal":
-		flip = sdl2.SDL_FLIP_HORIZONTAL
-	elif flip == "vertical":
-		flip = sdl2.SDL_FLIP_VERTICAL	
+	sdl2env = kwargs.get('sdl2env')
+	# alias the sdlrenderer
+	sdlrenderer = sdl2env.renderer.sdlrenderer	
 
 	# Calculate the required dimensions for the target texture
 	outer_r, inner_r = int(r+penwidth*.5), int(r-penwidth*.5)
 
-	# Calculate the required dimensions of the extra texture we are
+	# Calculate the required dimensions of the texture we are
 	# going to draw the circle on. Add 1 pixel to account for division
 	# errors (i.e. dividing an odd number of pixels)
 	c_width, c_height = outer_r*2+1, outer_r*2+1
 
+	# Create the target texture
 	target_texture = sdl2env.texture_factory.create_sprite(
 		size=(c_width, c_height),
 		access=sdl2.SDL_TEXTUREACCESS_TARGET
 	)
 
-	# Set texture as render target (from now on sdlrenderer draws on this texture)
+	# Set target texture as render target (from now on sdlrenderer draws on this texture)
 	if sdl2.SDL_SetRenderTarget(sdlrenderer, target_texture.texture) != 0:
 		raise Exception("Could not set circle texture as rendering target: "
 			"{}".format(sdl2.SDL_GetError()))
 
 	# if only a filled circle needs to be drawn, it's easy
 	if fill:
-		sdlgfx.filledCircleRGBA(sdlrenderer, r, r, r, color.r, color.g, color.b, opacity)
+		sdlgfx.filledCircleRGBA(sdlrenderer, r, r, r, color.r, color.g, color.b, 
+			opacity)
+		if aa:
+		 	sdlgfx.aacircleRGBA(sdlrenderer, r, r, r-1, color.r, color.g, 
+		 		color.b, opacity)
+
 	else:
 		# If penwidth is 1, simply use sdl2gfx's own functions
 		if penwidth == 1:
 			if aa:
-		 		sdlgfx.aacircleRGBA(sdlrenderer, r, r, r, color.r, color.g, color.b, opacity)
+		 		sdlgfx.aacircleRGBA(sdlrenderer, r, r, r, color.r, color.g, 
+		 			color.b, opacity)
 			else:
-				sdlgfx.circleRGBA(sdlrenderer, r, r, r, color.r, color.g, color.b, opacity)
+				sdlgfx.circleRGBA(sdlrenderer, r, r, r, color.r, color.g, color.b, 
+					opacity)
 		else:
 			# If the penwidth is larger than 1, things become a bit more complex.
 			# To ensure that the interior of the circle is transparent, we will
@@ -137,14 +123,15 @@ def circle(x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1,
 
 			# Create the circle texture, and make sure it can be a rendering
 			# target by setting the correct access flag.
-			circle_sprite = self.environment.texture_factory.create_software_sprite(
+			circle_sprite = sdl2env.texture_factory.create_software_sprite(
 				size=(c_width, c_height)
 			)
+
 			# Create a renderer to draw to the circle sprite
 			sprite_renderer = sdl2.ext.Renderer(circle_sprite)
 
 			# Determine the optimal color key to use for this operation
-			colorkey_color = self.determine_optimal_colorkey(color, self.background_color)
+			colorkey_color = determine_optimal_colorkey(color)
 			
 			# Clear the sprite with the colorkey color
 			sprite_renderer.clear(colorkey_color)
@@ -181,12 +168,12 @@ def circle(x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1,
 			sdl2.SDL_SetColorKey(circle_sprite.surface, sdl2.SDL_TRUE, colorkey)
 
 			# Create a texture from the circle sprite
-			circle_texture = self.environment.texture_factory.from_surface(
+			circle_texture = sdl2env.texture_factory.from_surface(
 				circle_sprite.surface
 			)
 			
 			# Perform the blitting operation
-			renderer.copy( circle_texture, dstrect=(0, 0, c_width, c_height))
+			sdl2env.renderer.copy( circle_texture, dstrect=(0, 0, c_width, c_height))
 
 			# Cleanup
 			del(circle_sprite)
@@ -201,13 +188,13 @@ def circle(x, y, r, color, opacity=1.0, fill=True, aa=False, penwidth=1,
 		raise Exception("Could not free circle texture as rendering target: "
 			"{}".format(sdl2.SDL_GetError()))
 
+	# Set the relevant information in the target texture object
 	target_texture.x = x
 	target_texture.y = y
-	target_texture.r = r
 	target_texture.opacity = opacity
 	target_texture.center = rotation_center
 	target_texture.angle = rotation
-	target_texture.flip = flip
+	# target_texture.flip = flip
 	return target_texture
 		
 

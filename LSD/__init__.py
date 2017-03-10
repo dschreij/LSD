@@ -12,7 +12,8 @@ from __future__ import unicode_literals
 
 # SDL2 libraries
 import sdl2.ext
-from . import screen
+from .screen import FrameBuffer
+from .env import SDL2Environment
 import os
 import sys
 
@@ -23,86 +24,6 @@ __author__ = 'Daniel Schreij'
 
 # The variable to hold the sdl2environment object
 current_sdl2_environment = None
-
-class SDL2Environment(object):
-
-	def __init__(self, window, resolution, renderer, texture_factory, surface_factory):
-		self.window = window
-		self.resolution = resolution
-		self.renderer = renderer
-		self.texture_factory = texture_factory
-		self.surface_factory = surface_factory
-		self.active_framebuffers = []
-
-		# Get the rest of the info by quering SDL2 itself
-		# Only for screen 1 for now
-		self.pysdl2_version = sdl2.__version__
-		self.sdl2_version = "{}.{}.{}".format(sdl2.version.SDL_MAJOR_VERSION, sdl2.version.SDL_MINOR_VERSION, sdl2.version.SDL_PATCHLEVEL)
-
-		self.cpu_count = sdl2.SDL_GetCPUCount()
-		self.display_count = sdl2.SDL_GetNumVideoDisplays()
-
-		self.displays = []
-		for dispnum in range(self.display_count):
-			dispinfo = sdl2.SDL_DisplayMode()
-			res = sdl2.SDL_GetCurrentDisplayMode(dispnum, dispinfo)
-			if res == 0:
-				self.displays.append(dispinfo)
-
-		self.display_drivers = [sdl2.video.SDL_GetVideoDriver(i) for i in range(sdl2.video.SDL_GetNumVideoDrivers())]
-		self.current_display_driver = sdl2.SDL_GetCurrentVideoDriver()
-
-	def __str__(self):
-		infostring = (""
-		"SDL2 environment information\n"
-		"\n"
-		"General:\n"
-		"	LSD version {}\n".format(__version__) +
-		"	PySDL2 version: {}\n".format(self.pysdl2_version) +
-		"	SDL2 version: {}\n".format(self.sdl2_version) +
-		"	CPU count: {}\n".format(self.cpu_count) +
-		"\n"
-		"Displays:\n"
-		"	Available display drivers: {}\n".format(self.display_drivers) +
-		"	Current display driver: {}\n".format(self.current_display_driver) +
-		"	Number of displays detected: {}\n\n".format(self.display_count))
-
-		for dispnum, display in enumerate(self.displays):
-			infostring += (""
-			"	Display {}:\n".format(dispnum) +
-			"		Resolution: ({},{})\n".format(display.w, display.h) +
-			"		Refresh rate: {} fps\n\n".format(display.refresh_rate))
-		
-		return infostring
-
-	def __repr__(self):
-		return self.__str__()
-
-	def info(self):
-		info = {
-			"LSD version":__version__,
-			"PySDL2 version":self.pysdl2_version,
-			"SDL2 version":self.sdl2_version,
-			"CPU count":self.cpu_count,
-			"Current display driver":self.current_display_driver,
-			"Display count":self.display_count,
-			"Window dimensions":self.window.size,
-			"Available display drivers":self.display_drivers,
-		}
-
-		for dispnum, display in enumerate(self.displays):
-			cur_disp_info = {}
-			cur_disp_info["Resolution"] = (display.w, display.h)
-			cur_disp_info["Refresh rate"] = display.refresh_rate
-			info["Display {}".format(dispnum)] = cur_disp_info
-
-		return info
-
-	def get_available_display_drivers(self):
-		drivers = []
-		for vd in range(sdl2.SDL_GetNumVideoDrivers()):
-			drivers.append(sdl2.SDL_GetVideoDriver(vd))
-		return drivers
 
 def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 	global current_sdl2_environment
@@ -117,7 +38,8 @@ def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 		# although this is often internally specified as "windows". If this occurs, give sdl2 a 
 		# nudge in the right direction by picking the first detected available video driver.
 		if os.name == "nt":
-			sys.stdout.write("Invalid video driver specified. Trying '{0}'... ".format(sdl2.video.SDL_GetVideoDriver(0)))
+			sys.stdout.write("Invalid video driver specified. Trying '{0}'..."
+				"".format(sdl2.video.SDL_GetVideoDriver(0)))
 			os.environ["SDL_VIDEODRIVER"] = sdl2.video.SDL_GetVideoDriver(0)
 			sdl2.ext.init()
 			print("Success!")
@@ -128,7 +50,8 @@ def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 
 		dispinfo = sdl2.SDL_DisplayMode()
 		if sdl2.SDL_GetCurrentDisplayMode(0, dispinfo) != 0:
-			raise Exception("Could not get display resolution: {}".format(sdl2.SDL_GetError()))
+			raise Exception("Could not get display resolution: {}"
+				"".format(sdl2.SDL_GetError()))
 		window_size = dispinfo.w, dispinfo.h
 	else:
 		window_size = resolution
@@ -137,7 +60,8 @@ def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 	window.show()
 
 	# Create a render system that renders to the window surface
-	rendererflags = sdl2.SDL_RENDERER_ACCELERATED | sdl2.SDL_RENDERER_PRESENTVSYNC | sdl2.SDL_RENDERER_TARGETTEXTURE
+	rendererflags = sdl2.SDL_RENDERER_ACCELERATED | \
+		sdl2.SDL_RENDERER_PRESENTVSYNC | sdl2.SDL_RENDERER_TARGETTEXTURE
 	renderer = sdl2.ext.Renderer(window, flags=rendererflags)
 	renderer.clear(0)
 	renderer.present()
@@ -148,7 +72,8 @@ def create_window(resolution, title="SDL2 Display Window", fullscreen=False):
 
 	# Create an environment object that contains all necessary objects, functions
 	# and other information to work with the window interface.
-	sdl2env = SDL2Environment(window, resolution, renderer, texture_factory, surface_factory)
+	sdl2env = SDL2Environment(window, resolution, renderer, texture_factory, 
+		surface_factory, __version__)
 	current_sdl2_environment= sdl2env
 	window.refresh()
 	return sdl2env
@@ -174,9 +99,9 @@ def create_framebuffer(*args, **kwargs):
 	sdl2env = kwargs.get('sdl2env', None)
 	if type(sdl2env) == SDL2Environment:
 		if len(args):
-			return screen.FrameBuffer(*args, **kwargs)
+			return FrameBuffer(*args, **kwargs)
 		else:
-			return screen.FrameBuffer(**kwargs)
+			return FrameBuffer(**kwargs)
 	else:
 		raise EnvironmentError("SDL2 is not initialized yet! Create a window first")
 
